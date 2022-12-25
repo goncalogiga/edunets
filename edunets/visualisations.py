@@ -19,9 +19,15 @@ def draw_dot(root):
 	for n in nodes:
 		uid = str(id(n))
 		# for any value in the graph, create a rectangular ('record') node for it
-		dot.node(name = uid, 
-				 label = "{data %.4f | grad %.4f }" % (n.data, n.grad),
-				 shape='record')
+		# if no gradient was required, simply show the data
+		if n.requires_grad:
+			dot.node(name = uid, 
+					label = "{data %.4f | grad %.4f }" % (n.data, n.grad),
+					shape='record')
+		else:
+			dot.node(name = uid, 
+					label = "data %.4f" % (n.data),
+					shape='record')
 
 		if n._op:
 			dot.node(name=uid + n._op, label=n._op)
