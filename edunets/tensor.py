@@ -1,27 +1,41 @@
 import numpy as np
+import pprint
 from edunets.visualisations import draw_dot
 
 
 class Tensor:
-    _children, _op, grad = (), "", 0
+    _children, _op, grad = (), "", 0.0
 
 
-    def __init__(self, data, requires_grad=True):
+    def __init__(self, data, dtype=np.float32, requires_grad=False):
         # Initiating the derivative of the tensor to nothing
         self._backward = lambda: None
         
-        self.data = data
-        self.requires_grad = requires_grad
+        self.data = np.array(data, dtype=dtype)
+        if self.data.shape == (): self.data = np.expand_dims(self.data, axis=0)
+        self.requires_grad = bool(requires_grad)
+        if not self.requires_grad: self.grad = None
 
 
     def __repr__(self):
-        return f"tensor({self.data})"
+        if self.data.shape == (1,):
+            data_repr = pprint.pformat(self.data)[7:-1].replace(']', '')
+        else:
+            data_repr = pprint.pformat(self.data)[6:-1]
+
+        if self.requires_grad:
+            return f"tensor({data_repr}, requires_grad=True)"
+        else:
+            return f"tensor({data_repr})"
 
 
     def _parent_of(self, children):
         """
         Used to keep track of the graph of operations applied to the tensor
+        and set requires_grad if necessary
         """
+        self.requires_grad = any(child.requires_grad for child in children)
+        if self.requires_grad: self.grad = 0.0
         self._children = set(children)
         return self
 
@@ -35,6 +49,9 @@ class Tensor:
         """
         Backpropagation algorithm
         """
+        if self.shape != (1,):
+            raise RuntimeError("grad can be implicitly created only for scalar outputs")
+
         sorted_grah, visited = [], set()
         
         def topological_sort(v):
@@ -69,17 +86,23 @@ class Tensor:
     def __radd__(self, other): return tadd(self, other)
     def __rmul__(self, other): return tmul(self, other)
     def __neg__(self): return tmul(self, -1)
-    def __sub__(self, other): return tadd(self, self.__neg__(other))
-    def __rsub__(self, other): return tadd(self.__neg__(), other)
+    def __sub__(self, other): return tadd(self, tmul(other, -1))
+    def __rsub__(self, other): return tadd(tmul(self, -1), other)
     def __truediv__(self, other): return tmul(self, tpow(other, -1))
     def __rpow__(self, other): return tpow(other, self)
 
     # === more advanced operations ===
     def exp(self): return texp(self)
 
-    # === display graph of operations ===
-    def graph(self):
-        return draw_dot(self)
+    # === reduce operations
+    def max(self): return tmax(self)
+
+    # === tensor propreties
+    @property
+    def graph(self): return draw_dot(self)
+
+    @property
+    def shape(self): return self.data.shape
 
 
 
@@ -188,10 +211,10 @@ def texp(a):
     """
     f = Tensor(np.exp(a.data))._parent_of((a, ))._result_of_op('e')
 
-    def backward():
+    def backward_a():
         a.grad += f.data * f.grad
 
-    f._backward = op_backward((a, backward))
+    f._backward = op_backward((a, backward_a))
 
     return f
 
@@ -217,5 +240,33 @@ def tpow(a, b):
         b.grad += a.data * (b.data**(a.data - 1)) * f.grad
 
     f._backward = op_backward((a, backward_a), (b, backward_b))
+
+    return f
+
+
+def tmax(*args, axis=0):
+    """
+    Not sure about this one
+    """
+    if len(args) > 1 or isinstance(args[0], list):
+        itt = args[0] if isinstance(args[0], list) else args
+        max = np.maximum(*(a.data for a in itt))
+        # Returns the largest tensor of a list of tensors passed as arguments
+        for t in args:  # so so ugly
+            if np.array_equal(t.data, max): return t
+    
+    # Case of the maximum of a Tensor in itself (ie. a.max())
+    a = args[0]
+
+    max_pos = np.argmax(a.data)
+
+    f = Tensor(a.data[max_pos])._parent_of((a, ))._result_of_op('max')
+
+    def backward_a():
+        grad_a = np.zeros(shape=a.shape)
+        grad_a[max_pos] = np.ones(shape=a.data[0].shape)
+        a.grad += grad_a * f.grad
+
+    f._backward = op_backward((a, backward_a))
 
     return f
