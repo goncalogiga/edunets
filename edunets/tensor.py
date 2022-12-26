@@ -83,19 +83,22 @@ class Tensor:
     def __pow__(self, other): return tpow(self, other)
 
     # === operations based on the previous ones ===
-    def __radd__(self, other): return tadd(self, other)
-    def __rmul__(self, other): return tmul(self, other)
-    def __neg__(self): return tmul(self, -1)
-    def __sub__(self, other): return tadd(self, tmul(other, -1))
-    def __rsub__(self, other): return tadd(tmul(self, -1), other)
-    def __truediv__(self, other): return tmul(self, tpow(other, -1))
-    def __rpow__(self, other): return tpow(other, self)
+    def __radd__(self, other): return self * other
+    def __rmul__(self, other): return self * other
+    def __neg__(self): return -1 * self
+    def __sub__(self, other): return self + (-other)
+    def __rsub__(self, other): return -self + other
+    def __truediv__(self, other): return self * other**(-1)
+    def __rpow__(self, other): return other**self
 
     # === more advanced operations ===
     def exp(self): return texp(self)
 
-    # === reduce operations
-    def max(self): return tmax(self)
+    # === reduce operations ===
+    def max(self): return tmaxmin(self, max=True)
+    def min(self): return tmaxmin(self, max=False)
+    def sum(self): return tsum(self)
+    def mean(self): return tsum(self)/sum(x for x in self.shape)
 
     # === tensor propreties
     @property
@@ -244,28 +247,44 @@ def tpow(a, b):
     return f
 
 
-def tmax(*args, axis=0):
+@op_wrap
+def tmaxmin(a, max):
     """
-    Not sure about this one
-    """
-    if len(args) > 1 or isinstance(args[0], list):
-        itt = args[0] if isinstance(args[0], list) else args
-        max = np.maximum(*(a.data for a in itt))
-        # Returns the largest tensor of a list of tensors passed as arguments
-        for t in args:  # so so ugly
-            if np.array_equal(t.data, max): return t
+    Maximum function f(a) = f([a1, a2, ..., an]) = a_max
+
+    The gradient of max is identity for the maximum value and 0 other wise.
     
-    # Case of the maximum of a Tensor in itself (ie. a.max())
-    a = args[0]
+    example:
+    a = [1, 2, 3]
+    df/da = [0, 0, 1]
+    """
+    maxmin_pos = np.argmax(a.data) if max else np.argmin(a.data)
+    maxmin_txt = "max" if max else "min"
 
-    max_pos = np.argmax(a.data)
-
-    f = Tensor(a.data[max_pos])._parent_of((a, ))._result_of_op('max')
+    f = Tensor(a.data[maxmin_pos])._parent_of((a, ))._result_of_op(maxmin_txt)
 
     def backward_a():
         grad_a = np.zeros(shape=a.shape)
-        grad_a[max_pos] = np.ones(shape=a.data[0].shape)
+        grad_a[maxmin_pos] = np.ones(shape=a.data[0].shape)
         a.grad += grad_a * f.grad
+
+    f._backward = op_backward((a, backward_a))
+
+    return f
+
+
+@op_wrap
+def tsum(a):
+    """
+    Summation function f(a) = f([a1, a2, ..., an]) = a1 + a2 + ... + an
+
+    a = [1, 2, 3]
+    df/da = [1, 1, 1]
+    """
+    f = Tensor(a.data.sum())._parent_of((a, ))._result_of_op('sum')
+
+    def backward_a():
+        a.grad += np.ones(shape=a.shape) * f.grad
 
     f._backward = op_backward((a, backward_a))
 
