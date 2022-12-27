@@ -260,20 +260,21 @@ def tmaxmin(a, max):
     Maximum function f(a) = f([a1, a2, ..., an]) = a_max
 
     The gradient of max is identity for the maximum value and 0 other wise.
-    
+        
     example:
     a = [1, 2, 3]
     df/da = [0, 0, 1]
     """
-    maxmin_func = a.data.argmax() if max else a.argmin()
-    maxmin_pos = np.unravel_index(maxmin_func, a.shape)
+    maxmin_func = np.max if max else np.min
+    maxmin_pos = np.argwhere(a.data == maxmin_func(a.data)).tolist()
     maxmin_txt = "max" if max else "min"
-
-    f = Tensor(a.data[maxmin_pos])._parent_of((a, ))._result_of_op(maxmin_txt)
+    
+    f = Tensor(a.data[*maxmin_pos[0]])._parent_of((a, ))._result_of_op(maxmin_txt)
 
     def backward_a():
         grad_a = np.zeros(shape=a.shape)
-        grad_a[maxmin_pos] = 1.0
+        for pos in maxmin_pos:
+            grad_a[*pos] = 1.0 / len(maxmin_pos)
         a.grad += grad_a * f.grad
 
     f._backward = op_backward((a, backward_a))
