@@ -77,10 +77,16 @@ class Tensor:
             v._backward()
 
 
-    # === basic operations ===
+    # === base operations ===
     def __add__(self, other): return tadd(self, other)
     def __mul__(self, other): return tmul(self, other)
     def __pow__(self, other): return tpow(self, other)
+    def __matmul__(self, other): return tmatmul(self, other)
+    
+    def sum(self): return tsum(self)
+    def max(self): return tmaxmin(self, max=True)
+    def min(self): return tmaxmin(self, max=False)
+
 
     # === operations based on the previous ones ===
     def __radd__(self, other): return self * other
@@ -93,19 +99,20 @@ class Tensor:
 
     # === more advanced operations ===
     def exp(self): return texp(self)
+    def mean(self): return self.sum(self)/sum(x for x in self.shape)
 
-    # === reduce operations ===
-    def max(self): return tmaxmin(self, max=True)
-    def min(self): return tmaxmin(self, max=False)
-    def sum(self): return tsum(self)
-    def mean(self): return tsum(self)/sum(x for x in self.shape)
-
-    # === tensor propreties
+    # === tensor propreties ===
     @property
     def graph(self): return draw_dot(self)
 
     @property
     def shape(self): return self.data.shape
+
+    # === tensor class methods ===
+
+    @classmethod
+    def eye(self, dim, **kwargs): return self(np.eye(dim), **kwargs)
+
 
 
 
@@ -258,14 +265,15 @@ def tmaxmin(a, max):
     a = [1, 2, 3]
     df/da = [0, 0, 1]
     """
-    maxmin_pos = np.argmax(a.data) if max else np.argmin(a.data)
+    maxmin_func = a.data.argmax() if max else a.argmin()
+    maxmin_pos = np.unravel_index(maxmin_func, a.shape)
     maxmin_txt = "max" if max else "min"
 
     f = Tensor(a.data[maxmin_pos])._parent_of((a, ))._result_of_op(maxmin_txt)
 
     def backward_a():
         grad_a = np.zeros(shape=a.shape)
-        grad_a[maxmin_pos] = np.ones(shape=a.data[0].shape)
+        grad_a[maxmin_pos] = 1.0
         a.grad += grad_a * f.grad
 
     f._backward = op_backward((a, backward_a))
@@ -274,17 +282,32 @@ def tmaxmin(a, max):
 
 
 @op_wrap
-def tsum(a):
+def tmatmul(a, b):
     """
-    Summation function f(a) = f([a1, a2, ..., an]) = a1 + a2 + ... + an
-
-    a = [1, 2, 3]
-    df/da = [1, 1, 1]
+    Matrix multiplication
     """
-    f = Tensor(a.data.sum())._parent_of((a, ))._result_of_op('sum')
+    f = Tensor(np.matmul(a.data, b.data))._parent_of((a, b))._result_of_op('@')
 
     def backward_a():
-        a.grad += np.ones(shape=a.shape) * f.grad
+        a.grad += f.grad @ b.data.T
+
+    def backward_b():
+        b.grad += a.data.T @ f.grad
+
+    f._backward = op_backward((a, backward_a), (b, backward_b))
+
+    return f
+
+
+@op_wrap
+def tsum(a):
+    """
+    Summation of each element in the matrix
+    """
+    f = Tensor(np.sum(a.data))._parent_of((a, ))._result_of_op('sum')
+
+    def backward_a():
+        a.grad += np.ones(a.shape) * f.grad
 
     f._backward = op_backward((a, backward_a))
 
