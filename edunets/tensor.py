@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.ma as ma
 import pprint
 from edunets.visualisations import draw_dot
 
@@ -78,10 +79,10 @@ class Tensor:
 
 
     # === base operations ===
+    def __matmul__(self, other): return tmatmul(self, other)
     def __add__(self, other): return tadd(self, other)
     def __mul__(self, other): return tmul(self, other)
     def __pow__(self, other): return tpow(self, other)
-    def __matmul__(self, other): return tmatmul(self, other)
     
     def sum(self): return tsum(self)
     def max(self): return tmaxmin(self, max=True)
@@ -256,26 +257,13 @@ def tpow(a, b):
 
 @op_wrap
 def tmaxmin(a, max):
-    """
-    Maximum function f(a) = f([a1, a2, ..., an]) = a_max
-
-    The gradient of max is identity for the maximum value and 0 other wise.
-        
-    example:
-    a = [1, 2, 3]
-    df/da = [0, 0, 1]
-    """
     maxmin_func = np.max if max else np.min
-    maxmin_pos = np.argwhere(a.data == maxmin_func(a.data)).tolist()
-    maxmin_txt = "max" if max else "min"
+    mask = ma.masked_equal(a.data, maxmin_func(a.data))
     
-    f = Tensor(a.data[*maxmin_pos[0]])._parent_of((a, ))._result_of_op(maxmin_txt)
+    f = Tensor(mask.fill_value)._parent_of((a, ))._result_of_op("max" if max else "min")
 
     def backward_a():
-        grad_a = np.zeros(shape=a.shape)
-        for pos in maxmin_pos:
-            grad_a[*pos] = 1.0 / len(maxmin_pos)
-        a.grad += grad_a * f.grad
+        a.grad += mask.mask / ma.count_masked(mask) * f.grad
 
     f._backward = op_backward((a, backward_a))
 

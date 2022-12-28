@@ -1,0 +1,187 @@
+\documentclass[fontsize=12pt]{article}
+\usepackage{float}
+
+% Packages ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+\usepackage[margin=1in]{geometry}
+\usepackage{lipsum,mwe,abstract}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\graphicspath{ {./images/} }
+\usepackage{afterpage}
+\usepackage{fancyhdr} % Custom headers and footers
+\usepackage{lipsum}
+\usepackage{pict2e,picture}
+\usepackage{amsmath,amsfonts,amsthm,amssymb} % Math packages
+%\usepackage[M]{thmbox}
+\usepackage{wrapfig}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{subcaption}
+\usepackage{comment}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{cuted}
+\usepackage{sectsty} % Allows customizing section commands
+\allsectionsfont{\normalfont \normalsize \scshape} % Section names in small caps and normal fonts
+\usepackage{subcaption}
+\usepackage{setspace}
+\usepackage{multicol}
+
+% For blank spaces and empty pages ~~~~~~~~~
+
+\newcommand\blankpage{%
+	    \null
+	        \thispagestyle{empty}%
+		    \addtocounter{page}{-1}%
+		        \newpage}
+
+\newcommand{\blankspace}{\textsc{\Large }\\}
+
+% Math stuff ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+% ============================================
+% \newtheoremstyle{mythmstyle}
+%   	{1.5em plus .5em minus .1em}%   Space above
+%   	{1.5em plus .5em minus .1em}%   Space below  
+% 	{} % Body font
+% 	{} % Indent amount
+%   	{\bfseries} % Theorem head font
+%   	{.} % Punctuation after theorem head
+%   	{.5em} % Space after theorem head
+%   	{} % Theorem head spec (can be left empty, meaning `normal')
+%
+% \theoremstyle{mythmstyle}
+
+% \newtheorem{definition}{Definition}[section]
+% \newtheorem{theorem}{Theorem}[section]
+% \newtheorem{corollary}{Corollary}[theorem]
+% \newtheorem{lemma}[theorem]{Lemma}
+% \newtheorem{remark}{Remark}
+% \newtheorem{example}{Example}
+% \newtheorem{property}{Property}
+% \newtheorem{prop}{Proposition}
+% \newtheorem{notation}{Notation}
+% \newtheorem{convention}{Convention}
+% \newtheorem{interpretation}{Interpretation}
+% \newtheorem{question}{Question}
+% ============================================
+
+% ============================================
+% special theorems / definitions / lemmas
+\theoremstyle{definition}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{prop}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{property}[theorem]{Property}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{convention}[theorem]{Convention}
+\newtheorem{interpretation}[theorem]{Interpretation}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{note}[theorem]{Note}
+% ============================================
+
+\usetikzlibrary{calc}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mOrange}{rgb}{1.0,0.5,0}
+\definecolor{mPurple}{rgb}{0.6,0.3,0.7}
+\definecolor{mDarkPurple}{rgb}{0.3,0.14,0.35}
+\definecolor{mPink}{rgb}{0.80,0.5,0.7}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.95}
+
+
+% Add your keywords here, and have this in a separate file
+% and include it in your preamble
+\lstset{
+  emph=[1]%
+  {%
+    uint32_t,
+    uint8_t,
+    inline
+  },
+  emphstyle=[1]{\color{mPurple}},
+  %
+  emph=[2]% Variable Types
+  {% 
+    DPU_FOREACH,
+    DPU_ASSERT,
+    DPU_XFER_TO_DPU,
+    BYTE_ALIGN,
+    DPU_XFER_DEFAULT,
+    ATOM_BUF_MAX_SIZE,
+    CCR_MAX_SIZE
+    ATOM,
+    CHUNK_SIZE,
+    ATOM_SIZE
+  },
+  emphstyle=[2]{\color{mOrange}},
+  %
+  emph=[3]% Variable Types
+  {% 
+    dpu_prepare_xfer,
+    dpu_push_xfer,
+    dpu_broadcast_to,
+    mram_par_read,
+    mram_read,
+    me,
+    op,
+    barrier_wait,
+    calculate_chunk_by_chunk,
+    compare_atoms,
+    build_chunk_by_chunk
+  },
+  emphstyle=[3]{\color{mDarkPurple}\bfseries},
+}%
+
+\lstdefinestyle{CStyle}{
+    backgroundcolor=\color{backgroundColour},   
+    commentstyle=\color{mGreen},
+    keywordstyle=\color{mPurple},
+    numberstyle=\tiny\color{mGray},
+    stringstyle=\color{mGreen},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    language=C
+}
+
+\usepackage{algorithm}% http://ctan.org/pkg/algorithms
+\usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
+%\usepackage{minted}
+
+% special epigraph/acknowledgements
+\newenvironment{dedication}
+  {\clearpage           % we want a new page
+   \vspace*{\stretch{1}}% some space at the top
+   \itshape             % the text is in italics
+   \raggedleft          % flush to the right margin
+   \begin{minipage}{0.6\linewidth}
+     \parindent=12pt
+   }
+   {\end{minipage}
+   \par % end the paragraph
+   \vspace{\stretch{2}} % space at bottom is three times that at the top
+   \raggedleft
+   % \textit{All Finite Lattices are Algebraic Lattices.}\\  %CITATION!!!!!!!
+   % \textit{-- G. Birkhoff}
+   \vspace{\stretch{1}}
+   \clearpage           % finish off the page
+ }

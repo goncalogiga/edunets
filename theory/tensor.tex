@@ -1,0 +1,66 @@
+\input{header}
+
+\begin{document}
+
+\section{Tensors}
+
+\section{Backward pass for basic operations}
+
+\begin{prop}
+  \label{prop:matmul}
+  Let $P$, $X$, $Q$ be three matrices of shape $n \times s$, $s \times r$ and
+  $r \times m$. 
+
+  \begin{equation}
+    \frac{\partial PXQ}{\partial X} = Q^T \otimes P
+  \end{equation}
+\end{prop}
+
+\begin{proof}
+  Any element $w_{ij}$ of the product $W = PXQ$ is expressed
+  by:
+
+  \begin{equation}
+    w_{ij} = \sum_{h=1}^{r} \sum_{t=1}^{s} p_{it} x_{th} b_{hj},
+  \end{equation}
+  
+  It follows that:
+
+  \begin{equation}
+    \frac{\partial w_{ij}}{\partial x_{ab}} = a_{ia}b_{bj}
+  \end{equation}
+
+  This is the definition of the Kronecker product of $Q^T$ and $P$.
+\end{proof}
+
+
+\subsection{Tensor multiplication}
+
+Let $A$ and $B$ be two matrices and $C = AB$ the result of their matrix
+product. Suppose that the gradient of a scalar $z$ with respect to $C$ is given
+by $G$. Both $\frac{\partial z}{\partial A}$ and $\frac{\partial z}{\partial
+B}$ need to be computed in order to complete the backward pass.
+
+\
+
+Using Proposition \ref{prop:matmul}, for $P = I$ the identity matrix, $X = A$ and $Q = B$, we get:
+
+\begin{equation}
+  \frac{\partial IAB}{\partial A} = \frac{\partial AB}{\partial A} = B^T \otimes I = B^T
+\end{equation}
+
+And similarly, for $P = A$, $X = B$ and $Q = I$ :
+
+\begin{equation}
+  \frac{\partial ABI}{\partial B} = \frac{\partial AB}{\partial B} = I \otimes A = A
+\end{equation}
+
+Finaly, using the chain rule:
+
+\begin{equation}
+  \frac{\partial z}{\partial A} = \frac{\partial z}{\partial C}
+  \frac{\partial C}{\partial A} = GB^T \text{ ; } \frac{\partial z}{\partial B}
+  = \frac{\partial C}{\partial B} \frac{\partial z}{\partial C} = A^TG
+\end{equation}
+
+\end{document}
