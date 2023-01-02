@@ -1,4 +1,5 @@
 import pprint
+import random
 import warnings
 import numpy as np
 import numpy.ma as ma
@@ -6,18 +7,13 @@ from edunets.visualisations import draw_dot
 
 
 class Tensor:
-    _op= ""
-    _is_leaf = False
-    _children = ()
-
+    _op, _children, _is_leaf = "", (), False
     grad = None
 
-
     def __init__(self, data, dtype=np.float32, requires_grad=False):
-        # Initiating the derivative of the tensor to nothing
-        self._backward = lambda: None
-        
         self.dtype = dtype
+        self._backward = lambda: None
+        self._key = random.randint(0, 2**32)
         self.data = np.array(data, dtype=dtype)
         self.requires_grad = bool(requires_grad)
         if self.data.shape == (): self.data = np.expand_dims(self.data, axis=0)
@@ -46,7 +42,7 @@ class Tensor:
 
 
     def _parent_of(self, children):
-        self._children = set(children)
+        self._children = children
         return self
 
     
@@ -70,13 +66,13 @@ class Tensor:
         Backpropagation algorithm
         """
         if self.shape != (1,):
-            raise RuntimeError("grad can be implicitly created only for scalar outputs")
+            raise RuntimeError("Edunets' back propagation only supports scalar outputs.")
 
         sorted_grah, visited = [], set()
         
         def topological_sort(v):
-            if v not in visited:
-                visited.add(v)
+            if v._key not in visited:
+                visited.add(v._key)
 
                 for child in v._children:
                     topological_sort(child)
@@ -98,8 +94,27 @@ class Tensor:
             v._backward()
             prev_v = v
 
+    
+    def assign(self, x):
+        print("assign")
+        if not isinstance(x, Tensor):
+            x = Tensor(x)
+        if self.shape != x.shape:
+            raise RuntimeError(f"Expected shape {self.shape}, but got {x.shape} instead.")
+        self.data = x.data
+        return x
+
+
+    # === comparisons ===
+    def __gt__(self, other): return Tensor(self.data > other.data)
+    def __lt__(self, other): return Tensor(self.data < other.data)
+    def __ge__(self, other): return Tensor(self.data >= other.data)
+    def __le__(self, other): return Tensor(self.data <= other.data)
+    def __eq__(self, other): return Tensor(self.data == other.data)
+    def __ne__(self, other): return Tensor(self.data != other.data)
 
     # === base operations ===
+    def __getitem__(self, items): return Tensor(self.data[items])
     def __matmul__(self, other): return tmatmul(self, other)
     def __add__(self, other): return tadd(self, other)
     def __mul__(self, other): return tmul(self, other)
@@ -129,7 +144,7 @@ class Tensor:
     def tan(self): return self.sin()/self.cos()
 
     # === more advanced operations ===
-    def mean(self): return self.sum(self)/sum(x for x in self.shape)
+    def mean(self): return self.sum()/sum(x for x in self.shape)
 
     #   ~~~ activation functions ~~~
     def sigmoid(self): return 1.0/(1.0 + (-self).exp())
@@ -170,6 +185,9 @@ class Tensor:
     @property
     def shape(self): return self.data.shape
 
+    @property
+    def T(self): self.data = self.data.T; return self 
+
 
 # **** Tensor base operations helper functions ****
 
@@ -205,7 +223,7 @@ def op_brodcast(a, b):
         beware of those changes if the brodcasted tensors are used elsewhere.""")
 
 
-# **** Tensor base operations functions ****
+# **** Tensor base operation functions ****
 
 
 @op_wrap
