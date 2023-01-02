@@ -110,20 +110,20 @@ class Tensor:
     def exp(self): return texp(self)
     def log(self): return tlog(self)
 
-    def __gt__(self, other): return tgreaterlower(self, other, greater=True)
-    def __lt__(self, other): return tgreaterlower(self, other, greater=False)
-
     def sum(self): return tsum(self)
     def max(self): return tmaxmin(self, max=True)
     def min(self): return tmaxmin(self, max=False)
 
+    def relu(self): return trelu(self)
+
     # === operations based on the previous ones ===
-    def __radd__(self, other): return self * other
+    def __radd__(self, other): return self + other
     def __rmul__(self, other): return self * other
     def __neg__(self): return -1 * self
     def __sub__(self, other): return self + (-other)
     def __rsub__(self, other): return -self + other
     def __truediv__(self, other): return self * other**(-1)
+    def __rtruediv__(self, other): return other * self**(-1)
     def __rpow__(self, other): return other**self
     def matmul(self, other): return self @ other
     def tan(self): return self.sin()/self.cos()
@@ -132,15 +132,8 @@ class Tensor:
     def mean(self): return self.sum(self)/sum(x for x in self.shape)
 
     #   ~~~ activation functions ~~~
-    def relu(self): return self * (self > 0)
-    def sigmoid(self): 1.0/(1.0 + (-self).exp())
-    def elu(self, alpha=1.0): return self.relu() - alpha*(1-self.exp()).relu()
-    def swish(self): return self * self.sigmoid()
-    silu = swish   # The SiLU function is also known as the swish function.
+    def sigmoid(self): return 1.0/(1.0 + (-self).exp())
     def tanh(self): return 2.0 * ((2.0 * self).sigmoid()) - 1.0
-    def leakyrelu(self, neg_slope=0.01): return self.relu() - (-neg_slope*self).relu()
-    def softplus(self, beta=1): return (1/beta) * (1 + (self*beta).exp()).log()
-    def mish(self): return self * self.softplus().tanh()
 
     # === tensor class methods ===
     @classmethod
@@ -176,8 +169,6 @@ class Tensor:
 
     @property
     def shape(self): return self.data.shape
-
-
 
 
 # **** Tensor base operations helper functions ****
@@ -216,6 +207,7 @@ def op_brodcast(a, b):
 
 # **** Tensor base operations functions ****
 
+
 @op_wrap
 def tadd(a, b):
     op_brodcast(a, b)
@@ -247,7 +239,7 @@ def texp(a):
     f = Tensor(np.exp(a.data))._parent_of((a, ))._result_of_op('e')
 
     def backward():
-        a._update_grad(a.data * f.grad)
+        a._update_grad(f.data * f.grad)
 
     return f._set_backward(backward)
 
@@ -299,14 +291,13 @@ def tcossin(a, cos):
 
 
 @op_wrap
-def tgreaterlower(a, b, greater):
-    mask = a.data > b.data if greater else a.data < b.data
+def trelu(a):
+    relu = (a.data > np.zeros(a.shape)) * a.data
 
-    f = Tensor(mask)._parent_of((a,b))._result_of_op('>')
+    f = Tensor(relu)._parent_of((a,))._result_of_op('relu')
 
     def backward():
-        a._update_grad(a.data * mask * f.grad)
-        b._update_grad(b.data * mask * f.grad)
+        a._update_grad(f.grad)
 
     return f._set_backward(backward)
 
