@@ -2,15 +2,19 @@ from graphviz import Digraph
 
 def trace(root):
 # builds a set of all nodes and edges in a graph
-	nodes, edges = set(), set()
+	nodes, edges = [], []
 	def build(v):
-		if v not in nodes:
-			nodes.add(v)
+		if v._key not in [n._key for n in nodes]:
+			nodes.append(v)
 			for child in v._children:
-				edges.add((child, v))
+				edges.append((child, v))
 				build(child)
 	build(root)
 	return nodes, edges
+
+def readable_data(data):
+	flatten = data.flatten()
+	return f"[{round(flatten[0], 4)}..{round(flatten[-1], 4)}]"
 
 def draw_dot(root):
 	dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'}) # LR = left to right
@@ -21,13 +25,15 @@ def draw_dot(root):
 		# for any value in the graph, create a rectangular ('record') node for it
 		# if no gradient was required, simply show the data
 
+		label = n.label if n.label is not None else readable_data(n.data)
+
 		if n.requires_grad:
 			dot.node(name = uid, 
-					label = f"{n.data} | grad = {n.grad}",
+					label = f"{label} | grad = {n.grad}",
 					shape='record')
 		else:
 			dot.node(name = uid, 
-					label = str(n.data),
+					label = label,
 					shape='record')
 
 		if n._op:

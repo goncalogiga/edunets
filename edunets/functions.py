@@ -3,4 +3,5 @@ from edunets.tensor import Tensor
 
 
 def argmax(t, **kargs):
-    return Tensor(np.argmax(t.data, **kargs))
+    t.data = np.argmax(t.data, **kargs)
+    return t

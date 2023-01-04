@@ -10,8 +10,9 @@ class Tensor:
     _op, _children, _is_leaf = "", (), False
     grad = None
 
-    def __init__(self, data, dtype=np.float32, requires_grad=False):
+    def __init__(self, data, dtype=np.float32, requires_grad=False, label=None):
         self.dtype = dtype
+        self.label = label
         self._backward = lambda: None
         self._key = random.randint(0, 2**32)
         self.data = np.array(data, dtype=dtype)
@@ -96,13 +97,16 @@ class Tensor:
 
     
     def assign(self, x):
-        print("assign")
         if not isinstance(x, Tensor):
             x = Tensor(x)
         if self.shape != x.shape:
             raise RuntimeError(f"Expected shape {self.shape}, but got {x.shape} instead.")
         self.data = x.data
         return x
+
+    
+    def __getitem__(self, items): 
+        return Tensor(self.data[items])
 
 
     # === comparisons ===
@@ -114,7 +118,6 @@ class Tensor:
     def __ne__(self, other): return Tensor(self.data != other.data)
 
     # === base operations ===
-    def __getitem__(self, items): return Tensor(self.data[items])
     def __matmul__(self, other): return tmatmul(self, other)
     def __add__(self, other): return tadd(self, other)
     def __mul__(self, other): return tmul(self, other)
@@ -285,9 +288,13 @@ def tpow(a, b):
 
 @op_wrap
 def tmatmul(a, b):
-    f = Tensor(np.matmul(a.data, b.data))._parent_of((a, b))._result_of_op('@')
+    if a.data.shape[-1] != b.data.shape[0]:
+        raise ValueError(f"Matrix of shape {a.shape} cannot be multiplied with one of shape {b.shape}.")
+
+    f = Tensor(a.data @ b.data)._parent_of((a, b))._result_of_op('@')
 
     def backward():
+        print(a.shape, b.shape, f.shape)
         a._update_grad(f.grad @ b.data.T)
         b._update_grad(a.data.T @ f.grad)
 
