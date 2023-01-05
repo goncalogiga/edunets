@@ -128,9 +128,9 @@ class Tensor:
     def exp(self): return texp(self)
     def log(self): return tlog(self)
 
-    def sum(self): return tsum(self)
     def max(self): return tmaxmin(self, max=True)
     def min(self): return tmaxmin(self, max=False)
+    def sum(self, axis=None, keepdims=False): return tsum(self, axis=axis, keepdims=keepdims)
 
     def relu(self): return trelu(self)
 
@@ -148,6 +148,13 @@ class Tensor:
 
     # === more advanced operations ===
     def mean(self): return self.sum()/sum(x for x in self.shape)
+    def softmax(self, axis):
+        e = (self - Tensor(np.max(self.data, axis=axis, keepdims=True))).exp()
+        return e / e.sum(axis=axis, keepdims=True)
+    def logsoftmax(self, axis):
+        e = (self - Tensor(np.max(self.data, axis=axis, keepdims=True))).exp()
+        return e / tlog(e.sum(axis=axis, keepdims=True))
+
 
     #   ~~~ activation functions ~~~
     def sigmoid(self): return 1.0/(1.0 + (-self).exp())
@@ -161,7 +168,7 @@ class Tensor:
     def zeros(self, *shape, **kwargs): return self(np.zeros(shape), **kwargs)
 
     @classmethod
-    def ones(self, shape, **kwargs): return self(np.ones(shape), **kwargs)
+    def ones(self, *shape, **kwargs): return self(np.ones(shape), **kwargs)
 
     @classmethod
     def empty(self, *shape, **kwargs): return self(np.empty(shape), **kwargs)
@@ -218,8 +225,10 @@ def op_brodcast(a, b):
     
     a_shape, b_shape = a.shape, b.shape
     
-    a.data = np.broadcast_to(a.data, brodcast_shape)
-    b.data = np.broadcast_to(b.data, brodcast_shape)
+    if a_shape != brodcast_shape:
+        a.data = np.broadcast_to(a.data, brodcast_shape)
+    if b_shape != brodcast_shape:
+        b.data = np.broadcast_to(b.data, brodcast_shape)
     
     if (a.requires_grad and a_shape != a.shape) or (b.requires_grad and b_shape != b.shape):
         warnings.warn("""Edunets can only brodcast by reshaping tensors inplace,
@@ -267,7 +276,7 @@ def texp(a):
 
 @op_wrap
 def tlog(a):
-    f = Tensor(np.log(a))._parent_of((a,))._result_of_op('log')
+    f = Tensor(np.log(a.data))._parent_of((a,))._result_of_op('log')
 
     def backward():
         a._update_grad(a.data**(-1) * f.grad)
@@ -294,14 +303,12 @@ def tmatmul(a, b):
     f = Tensor(a.data @ b.data)._parent_of((a, b))._result_of_op('@')
 
     def backward():
-        print(a.shape, b.shape, f.shape)
         a._update_grad(f.grad @ b.data.T)
         b._update_grad(a.data.T @ f.grad)
 
     return f._set_backward(backward)
 
 
-@op_wrap
 def tcossin(a, cos):
     f = Tensor(np.cos(a.data) if cos else np.sin(a.data))\
         ._parent_of((a,))\
@@ -315,7 +322,6 @@ def tcossin(a, cos):
     return f._set_backward(backward)
 
 
-@op_wrap
 def trelu(a):
     relu = (a.data > np.zeros(a.shape)) * a.data
 
@@ -327,7 +333,6 @@ def trelu(a):
     return f._set_backward(backward)
 
 
-@op_wrap
 def tmaxmin(a, max):
     maxmin_func = np.max if max else np.min
     mask = ma.masked_equal(a.data, maxmin_func(a.data))
@@ -343,13 +348,11 @@ def tmaxmin(a, max):
     return f._set_backward(backward)
 
 
-@op_wrap
-def tsum(a):
-    f = Tensor(np.sum(a.data))._parent_of((a, ))._result_of_op('sum')
+def tsum(a, axis, keepdims):
+    f = Tensor(np.sum(a.data, axis=axis, keepdims=keepdims))\
+        ._parent_of((a, ))._result_of_op(f'sum{axis}' if axis else "sum")
 
     def backward():
         a._update_grad(np.ones(a.shape) * f.grad)
 
-    f._backward = backward
-
-    return f
+    return f._set_backward(backward)

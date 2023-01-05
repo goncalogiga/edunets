@@ -1,3 +1,4 @@
+import numpy as np
 from graphviz import Digraph
 
 def trace(root):
@@ -13,8 +14,9 @@ def trace(root):
 	return nodes, edges
 
 def readable_data(data):
-	flatten = data.flatten()
-	return f"[{round(flatten[0], 4)}..{round(flatten[-1], 4)}]"
+	if len(data.shape) == 1 and data.shape[0] == 1:
+		return str(data)
+	return f"tensor{data.shape}"
 
 def draw_dot(root):
 	dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'}) # LR = left to right
@@ -26,10 +28,11 @@ def draw_dot(root):
 		# if no gradient was required, simply show the data
 
 		label = n.label if n.label is not None else readable_data(n.data)
+		grad = f"grad{n.grad.shape}" if n.grad is not None else "grad()"
 
 		if n.requires_grad:
 			dot.node(name = uid, 
-					label = f"{label} | grad = {n.grad}",
+					label = f"{label} | {grad}",
 					shape='record')
 		else:
 			dot.node(name = uid, 
