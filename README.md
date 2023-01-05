@@ -7,7 +7,7 @@ The notebook ```demos.ipynb``` demonstrates some of the things edunets can do.
 ## Installation
 
 ```{bash}
-pip3 install 
+pip3 install https://github.com/goncalogiga/edunets
 ```
 
 ## Example
