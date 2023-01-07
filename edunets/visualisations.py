@@ -28,7 +28,14 @@ def draw_dot(root):
 		# if no gradient was required, simply show the data
 
 		label = n.label if n.label is not None else readable_data(n.data)
-		grad = f"grad{n.grad.shape}" if n.grad is not None else "grad()"
+
+		if n.grad is not None:
+			if isinstance(n.grad, np.ndarray):
+				grad = f"grad{n.grad.shape}"
+			else:
+				grad = str(n.grad)
+		else:
+			grad = "grad()"
 
 		if n.requires_grad:
 			dot.node(name = uid, 

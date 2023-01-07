@@ -1,6 +1,8 @@
+import sys
 import pprint
 import random
 import warnings
+import traceback
 import numpy as np
 import numpy.ma as ma
 from edunets.visualisations import draw_dot
@@ -62,7 +64,7 @@ class Tensor:
         return self
 
     
-    def backward(self):
+    def backward(self, debug=False):
         """
         Backpropagation algorithm
         """
@@ -92,7 +94,15 @@ class Tensor:
         # For each node, apply the chain rule to get its gradient
         for v in reversed(sorted_grah):
             if prev_v: prev_v._free_grad()
-            v._backward()
+
+            try:
+                v._backward()
+            except:
+                if not debug: raise
+                traceback.print_exc()
+                v.grad = "#Exception"
+
+            if debug: v.requires_grad = True
             prev_v = v
 
     
@@ -104,9 +114,8 @@ class Tensor:
         self.data = x.data
         return x
 
-    
-    def __getitem__(self, items): 
-        return Tensor(self.data[items])
+
+    def retain_grad(self): self.requires_grad = True
 
 
     # === comparisons ===
@@ -134,6 +143,10 @@ class Tensor:
 
     def relu(self): return trelu(self)
 
+    # == selection and slicing ===
+    def __getitem__(self, items): 
+        return tgetitems(self, items)
+
     # === operations based on the previous ones ===
     def __radd__(self, other): return self + other
     def __rmul__(self, other): return self * other
@@ -147,13 +160,12 @@ class Tensor:
     def tan(self): return self.sin()/self.cos()
 
     # === more advanced operations ===
-    def mean(self): return self.sum()/sum(x for x in self.shape)
     def softmax(self, axis):
         e = (self - Tensor(np.max(self.data, axis=axis, keepdims=True))).exp()
         return e / e.sum(axis=axis, keepdims=True)
-    def logsoftmax(self, axis):
-        e = (self - Tensor(np.max(self.data, axis=axis, keepdims=True))).exp()
-        return e / tlog(e.sum(axis=axis, keepdims=True))
+
+    def mean(self): return self.sum()/sum(x for x in self.shape)
+    def logsoftmax(self, axis): return self.softmax(axis).log()
 
 
     #   ~~~ activation functions ~~~
@@ -342,7 +354,7 @@ def tmaxmin(a, max):
 
     def backward():
         a._update_grad(
-            mask.mask / ma.count_masked(mask) * f.grad
+            mask.mask / ma.count_masked(mask) # * f.grad ?
         )
 
     return f._set_backward(backward)
@@ -353,6 +365,32 @@ def tsum(a, axis, keepdims):
         ._parent_of((a, ))._result_of_op(f'sum{axis}' if axis else "sum")
 
     def backward():
-        a._update_grad(np.ones(a.shape) * f.grad)
+        a._update_grad(np.ones(a.shape)) # * f.grad ?
+
+    return f._set_backward(backward)
+
+
+def tgetitems(a, items):
+    if isinstance(items, tuple): items = list(items)
+
+    is_itter = True
+
+    if isinstance(items, list):
+        for i, item in enumerate(items):
+            if isinstance(item, Tensor):
+                items[i] = item.data.astype(int)
+    elif isinstance(items, Tensor):
+        items = items.data.astype(int)
+    else:
+        is_itter = False
+
+    if is_itter and not isinstance(items, slice): items = tuple(items)
+
+    f = Tensor(a.data[items])._parent_of((a,))._result_of_op("[*]")
+
+    def backward():
+        z = np.zeros(a.shape)
+        z[items] = f.grad
+        a._update_grad(z)
 
     return f._set_backward(backward)
