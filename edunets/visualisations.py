@@ -14,9 +14,10 @@ def trace(root):
 	return nodes, edges
 
 def readable_data(data):
+	nan_data = np.isnan(data).sum() == data.flatten().shape[0]
 	if len(data.shape) == 1 and data.shape[0] == 1:
 		return str(data)
-	return f"tensor{data.shape}"
+	return f"tensor{data.shape} = [nan]" if nan_data else f"tensor{data.shape}"
 
 def draw_dot(root):
 	dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'}) # LR = left to right
@@ -31,7 +32,10 @@ def draw_dot(root):
 
 		if n.grad is not None:
 			if isinstance(n.grad, np.ndarray):
-				grad = f"grad{n.grad.shape}"
+				if np.isnan(n.grad).sum() == n.grad.flatten().shape[0]:
+					grad = f"grad{n.grad.shape} = [nan]"
+				else:
+					grad = f"grad{n.grad.shape}"
 			else:
 				grad = str(n.grad)
 		else:
