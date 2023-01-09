@@ -1,10 +1,9 @@
-import sys
 import pprint
 import random
 import warnings
 import traceback
 import numpy as np
-import numpy.ma as ma
+from edunets import functions as f
 from edunets.visualisations import draw_dot
 
 
@@ -37,7 +36,7 @@ class Tensor:
     def _update_grad(self, value):
         if self._is_leaf: return self
         if self.grad is None: self.grad = 0
-        self.grad += value 
+        self.grad += np.nan_to_num(value) 
 
     
     def _free_grad(self):
@@ -127,25 +126,25 @@ class Tensor:
     def __ne__(self, other): return Tensor(self.data != other.data)
 
     # === base operations ===
-    def __matmul__(self, other): return tmatmul(self, other)
-    def __add__(self, other): return tadd(self, other)
-    def __mul__(self, other): return tmul(self, other)
-    def __pow__(self, other): return tpow(self, other)
+    def __matmul__(self, other): return f.matmul(self, other).out
+    def __add__(self, other): return f.add(self, other).out
+    def __mul__(self, other): return f.mul(self, other).out
+    def __pow__(self, other): return f.pow(self, other).out
     
-    def cos(self): return tcossin(self, cos=True)
-    def sin(self): return tcossin(self, cos=False)
-    def exp(self): return texp(self)
-    def log(self): return tlog(self)
+    def cos(self): return f.cos(self).out
+    def sin(self): return f.sin(self).out
+    def exp(self): return f.exp(self).out
+    def log(self): return f.log(self).out
 
-    def max(self): return tmaxmin(self, max=True)
-    def min(self): return tmaxmin(self, max=False)
-    def sum(self, axis=None, keepdims=False): return tsum(self, axis=axis, keepdims=keepdims)
+    def max(self, axis=None, keepdims=False): return f.max(self, axis=axis, keepdims=keepdims).out
+    def min(self, axis=None, keepdims=False): return f.min(self, axis=axis, keepdims=keepdims).out
+    def sum(self, axis=None, keepdims=False): return f.sum(self, axis=axis, keepdims=keepdims).out
 
-    def relu(self): return trelu(self)
+    def relu(self): return f.relu(self).out
 
     # == selection and slicing ===
     def __getitem__(self, items): 
-        return tgetitems(self, items)
+        return f.getitem(self, items).out
 
     # === operations based on the previous ones ===
     def __radd__(self, other): return self + other
@@ -194,8 +193,8 @@ class Tensor:
         return self(np.arange(start=start, stop=stop), **kwargs)
 
     @classmethod
-    def uniform(self, *shape, **kwargs): 
-        return self(np.random.default_rng().random(size=shape) * 2 - 1, **kwargs)
+    def uniform(self, *shape, low=0.0, high=1.0, **kwargs): 
+        return self(np.random.uniform(low=low, high=high, size=shape), **kwargs)
 
     @classmethod
     def eye(self, dim, **kwargs): return self(np.eye(dim), **kwargs)
@@ -211,186 +210,54 @@ class Tensor:
     def T(self): self.data = self.data.T; return self 
 
 
-# **** Tensor base operations helper functions ****
-
-def op_wrap(op):
-    """
-    Decorator to convert constants to Tensor constants
-    """
-    def wrapper(*args, **kwargs):
-        args = [
+class Function:
+    def __prepare__(self, *args):
+        # Convert non-Tensors to leaf Tensors
+        new_args = tuple(
             arg if isinstance(arg, Tensor) else Tensor(arg, requires_grad=False)._set_as_leaf()\
             for arg in args  
-        ]
-        return op(*args, **kwargs)
-    return wrapper
-
-
-def op_brodcast(a, b):
-    if a.shape == b.shape or a._is_leaf or b._is_leaf:
-        return
-
-    try:
-        brodcast_shape = np.broadcast(a.data, b.data).shape
-    except ValueError:
-        raise ValueError(f"Shape of tensors mismatch: {a.shape} x {b.shape}.")
-    
-    a_shape, b_shape = a.shape, b.shape
-    
-    if a_shape != brodcast_shape:
-        a.data = np.broadcast_to(a.data, brodcast_shape)
-    if b_shape != brodcast_shape:
-        b.data = np.broadcast_to(b.data, brodcast_shape)
-    
-    if (a.requires_grad and a_shape != a.shape) or (b.requires_grad and b_shape != b.shape):
-        warnings.warn("""Edunets can only brodcast by reshaping tensors inplace,
-        beware of those changes if the brodcasted tensors are used elsewhere.""")
-
-
-# **** Tensor base operation functions ****
-
-
-@op_wrap
-def tadd(a, b):
-    op_brodcast(a, b)
-
-    f = Tensor(a.data + b.data)._parent_of((a, b))._result_of_op('+')
-
-    def backward():
-        a._update_grad(f.grad)
-        b._update_grad(f.grad)
-
-    return f._set_backward(backward)
-
-
-@op_wrap
-def tmul(a, b):
-    op_brodcast(a, b)
-
-    f = Tensor(a.data * b.data)._parent_of((a, b))._result_of_op('*')
-
-    def backward():
-        a._update_grad(b.data * f.grad)
-        b._update_grad(a.data * f.grad)
-
-    return f._set_backward(backward)
-
-
-@op_wrap
-def texp(a):
-    f = Tensor(np.exp(a.data))._parent_of((a, ))._result_of_op('e')
-
-    def backward():
-        a._update_grad(f.data * f.grad)
-
-    return f._set_backward(backward)
-
-
-@op_wrap
-def tlog(a):
-    f = Tensor(np.log(a.data))._parent_of((a,))._result_of_op('log')
-
-    def backward():
-        a._update_grad(a.data**(-1) * f.grad)
-
-    return f._set_backward(backward)
-
-
-@op_wrap
-def tpow(a, b):
-    f = Tensor(a.data ** b.data)._parent_of((a, b))._result_of_op('**')
-
-    def backward():
-        a._update_grad(b.data * (a.data**(b.data - 1)) * f.grad)
-        b._update_grad(np.zeros(b.shape))
-
-    return f._set_backward(backward)
-
-
-@op_wrap
-def tmatmul(a, b):
-    if a.data.shape[-1] != b.data.shape[0]:
-        raise ValueError(f"Matrix of shape {a.shape} cannot be multiplied with one of shape {b.shape}.")
-
-    f = Tensor(a.data @ b.data)._parent_of((a, b))._result_of_op('@')
-
-    def backward():
-        a._update_grad(f.grad @ b.data.T)
-        b._update_grad(a.data.T @ f.grad)
-
-    return f._set_backward(backward)
-
-
-def tcossin(a, cos):
-    f = Tensor(np.cos(a.data) if cos else np.sin(a.data))\
-        ._parent_of((a,))\
-        ._result_of_op('cos')
-
-    def backward():
-        a._update_grad(
-            -np.sin(a.data) * f.grad if cos else np.cos(a.data) * f.grad
         )
-
-    return f._set_backward(backward)
-
-
-def trelu(a):
-    relu = (a.data > np.zeros(a.shape)) * a.data
-
-    f = Tensor(relu)._parent_of((a,))._result_of_op('relu')
-
-    def backward():
-        a._update_grad(f.grad)
-
-    return f._set_backward(backward)
+        return new_args if len(args) > 1 else new_args[0]
 
 
-def tmaxmin(a, max):
-    maxmin_func = np.max if max else np.min
-    mask = ma.masked_equal(a.data, maxmin_func(a.data))
+    def __init__(self, *args, brodcastable=False):
+        if brodcastable: self._brodcast(*args)
+        self.out = Tensor(np.nan_to_num(self.forward()))\
+            ._parent_of(tuple(args))\
+            ._result_of_op(self.op)\
+            ._set_backward(self.backward)
+
+
+    def _brodcast(self, *args):
+        if len(args) != 2:
+            raise ValueError("_brodcast method can only deal with dual operations.")
+        a, b = args[0], args[1]
+
+        if not (a.shape == b.shape or a._is_leaf or b._is_leaf):
+            try:
+                brodcast_shape = np.broadcast(a.data, b.data).shape
+            except ValueError:
+                raise ValueError(f"Shape of tensors mismatch: {a.shape} x {b.shape}.")
+        
+            a_shape, b_shape = a.shape, b.shape
+            
+            if a_shape != brodcast_shape:
+                a.data = np.broadcast_to(a.data, brodcast_shape)
+            if b_shape != brodcast_shape:
+                b.data = np.broadcast_to(b.data, brodcast_shape)
+            
+            if (a.requires_grad and a_shape != a.shape) or (b.requires_grad and b_shape != b.shape):
+                warnings.warn("""Edunets can only brodcast by reshaping tensors inplace,
+                beware of those changes if the brodcasted tensors are used elsewhere.""")
+
     
-    f = Tensor(mask.fill_value)._parent_of((a, ))\
-                               ._result_of_op("max" if max else "min")
-
-    def backward():
-        a._update_grad(
-            mask.mask / ma.count_masked(mask) # * f.grad ?
-        )
-
-    return f._set_backward(backward)
+    def is_tensor(self, candidate):
+        return isinstance(candidate, Tensor)
 
 
-def tsum(a, axis, keepdims):
-    f = Tensor(np.sum(a.data, axis=axis, keepdims=keepdims))\
-        ._parent_of((a, ))._result_of_op(f'sum{axis}' if axis else "sum")
-
-    def backward():
-        a._update_grad(np.ones(a.shape)) # * f.grad ?
-
-    return f._set_backward(backward)
+    def forward(self):
+        raise RuntimeError("Forward pass was not defined.")
 
 
-def tgetitems(a, items):
-    if isinstance(items, tuple): items = list(items)
-
-    is_itter = True
-
-    if isinstance(items, list):
-        for i, item in enumerate(items):
-            if isinstance(item, Tensor):
-                items[i] = item.data.astype(int)
-    elif isinstance(items, Tensor):
-        items = items.data.astype(int)
-    else:
-        is_itter = False
-
-    if is_itter and not isinstance(items, slice): items = tuple(items)
-
-    f = Tensor(a.data[items])._parent_of((a,))._result_of_op("[*]")
-
-    def backward():
-        z = np.zeros(a.shape)
-        z[items] = f.grad
-        a._update_grad(z)
-
-    return f._set_backward(backward)
+    def backward(self):
+        raise RuntimeError("Backward pass was not defined.")

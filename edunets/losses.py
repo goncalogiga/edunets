@@ -15,13 +15,13 @@ class CrossEntropyLoss:
         X = [[0.2, 0.2, 0.6], [0.8, 0.1, 0.1]]
         Y = [2, 1]
         x_class = [0.6, 0.1]
-        return [0.6, 0.1] - [1, 1] = [-0.4, -0.9]
+        return -[0.6, 0.1] + [1, 1] = [0.4, 0.9]
         """
         batch_size = y.shape[0]
         x_class = x[np.arange(batch_size), y]
 
         if self.weight is not None:
-            return self.weight[y] * (-x[y] + x.sum(axis=1).log())
+            return self.weight[y] * (-x[y] + x.sum(axis=1))
 
         return -x_class + x.exp().sum(axis=1).log()
 

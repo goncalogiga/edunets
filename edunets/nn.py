@@ -1,4 +1,6 @@
+import numpy as np
 from edunets.tensor import Tensor
+
 
 class Linear:
     def __init__(self, in_features, out_features, bias=True):
