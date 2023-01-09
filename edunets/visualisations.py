@@ -1,3 +1,4 @@
+# Inspired by https://github.com/karpathy/nn-zero-to-hero/blob/master/lectures/micrograd/micrograd_lecture_first_half_roughly.ipynb
 import numpy as np
 from graphviz import Digraph
 

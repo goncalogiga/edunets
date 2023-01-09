@@ -21,7 +21,7 @@ class CrossEntropyLoss:
         x_class = x[np.arange(batch_size), y]
 
         if self.weight is not None:
-            return self.weight[y] * (-x[y] + x.sum(axis=1))
+            return self.weight[y] * (-x[y] + x.exp().sum(axis=1).log())
 
         return -x_class + x.exp().sum(axis=1).log()
 

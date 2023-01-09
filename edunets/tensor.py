@@ -63,6 +63,9 @@ class Tensor:
         return self
 
     
+    def retain_grad(self): self.requires_grad = True
+
+    
     def backward(self, debug=False):
         """
         Backpropagation algorithm
@@ -88,7 +91,7 @@ class Tensor:
         # chain rule result.
         # Backpropagation is done assuming the node calling .backward()
         # is the last of the operation grah
-        self.grad, prev_v = 1.0, None
+        self.grad, prev_v = np.array(1.0), None
 
         # For each node, apply the chain rule to get its gradient
         for v in reversed(sorted_grah):
@@ -103,18 +106,6 @@ class Tensor:
 
             if debug: v.requires_grad = True
             prev_v = v
-
-    
-    def assign(self, x):
-        if not isinstance(x, Tensor):
-            x = Tensor(x)
-        if self.shape != x.shape:
-            raise RuntimeError(f"Expected shape {self.shape}, but got {x.shape} instead.")
-        self.data = x.data
-        return x
-
-
-    def retain_grad(self): self.requires_grad = True
 
 
     # === comparisons ===
@@ -193,7 +184,7 @@ class Tensor:
         return self(np.arange(start=start, stop=stop), **kwargs)
 
     @classmethod
-    def uniform(self, *shape, low=0.0, high=1.0, **kwargs): 
+    def uniform(self, shape, low=0.0, high=1.0, **kwargs): 
         return self(np.random.uniform(low=low, high=high, size=shape), **kwargs)
 
     @classmethod
@@ -222,6 +213,7 @@ class Function:
 
     def __init__(self, *args, brodcastable=False):
         if brodcastable: self._brodcast(*args)
+        #Tensor(np.nan_to_num(self.forward()))
         self.out = Tensor(np.nan_to_num(self.forward()))\
             ._parent_of(tuple(args))\
             ._result_of_op(self.op)\

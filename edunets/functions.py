@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.ma as ma
 from edunets.tensor import Function
+from edunets.expanders import expand_by_repeating
 
 
 # === Unary ops ===
@@ -138,7 +139,7 @@ class max(ReductionOp):
         return self.mask.fill_value
 
     def backward(self):
-        self.a._update_grad(self.mask.mask / ma.count_masked(self.mask)) # * f.grad ?
+        self.a._update_grad((self.mask.mask / ma.count_masked(self.mask)) * self.out.grad)
 
 
 class min(max):
@@ -156,8 +157,10 @@ class sum(ReductionOp):
         return np.sum(self.a.data, axis=self.axis, keepdims=self.keepdims)
 
     def backward(self):
-        self.a._update_grad(np.ones(self.a.shape)) # * f.grad ?
-
+        if self.axis:
+            self.a._update_grad(expand_by_repeating(self.out.grad, self.a))
+        else:
+            self.a._update_grad(np.ones(self.a.shape) * self.out.grad)
 
 # === Others ===
 
