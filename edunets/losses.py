@@ -1,15 +1,16 @@
+import typing
 import numpy as np
-
+from edunets.tensor import Tensor, TensorContent
 
 class CrossEntropyLoss:
     """
     Based on https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
     """
-    def __init__(self, weight=None, reduction="mean"):
+    def __init__(self, weight: typing.Union[TensorContent, Tensor]=None, reduction: str="mean"):
         self.weight = weight
         self.reduction = reduction
 
-    def _base_l(self, x, y):
+    def _base_l(self, x: Tensor, y: Tensor) -> Tensor:
         batch_size = y.shape[0]
         x_class = x[np.arange(batch_size), y]
 
@@ -18,7 +19,7 @@ class CrossEntropyLoss:
 
         return -x_class + x.exp().sum(axis=1).log()
 
-    def forward(self, input, target):
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
         if self.reduction == "none":
             return self._base_l(input, target)
         elif self.reduction == "mean":
