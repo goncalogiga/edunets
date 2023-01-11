@@ -29,16 +29,17 @@ def draw_dot(root):
 		# for any value in the graph, create a rectangular ('record') node for it
 		# if no gradient was required, simply show the data
 
+		grad = n._grad
 		label = n.label if n.label is not None else readable_data(n.data)
 
-		if n.grad is not None:
-			if isinstance(n.grad, np.ndarray):
-				if np.isnan(n.grad).sum() == n.grad.flatten().shape[0]:
-					grad = f"grad{n.grad.shape} = [nan]"
+		if grad is not None:
+			if isinstance(grad, np.ndarray):
+				if np.isnan(grad).sum() == grad.flatten().shape[0]:
+					grad = f"grad{grad.shape} = [nan]"
 				else:
-					grad = f"grad{n.grad.shape}"
+					grad = f"grad{grad.shape}"
 			else:
-				grad = str(n.grad)
+				grad = str(grad)
 		else:
 			grad = "grad()"
 

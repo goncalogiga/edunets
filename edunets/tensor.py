@@ -8,8 +8,8 @@ from edunets.visualisations import draw_dot
 
 
 class Tensor:
-    _op, _children, _is_leaf = "", (), False
-    grad = None
+    _grad, _op, _children, _is_leaf, _NaNs =  None, "", (), False, False
+
 
     def __init__(self, data, dtype=np.float32, requires_grad=False, label=None):
         self.dtype = dtype
@@ -35,15 +35,23 @@ class Tensor:
 
     def _update_grad(self, value):
         if self._is_leaf: return self
-        if self.grad is None: self.grad = 0
-        self.grad += np.nan_to_num(value) 
+        if self._grad is None: self._grad = 0
+        self._grad += value if self._NaNs else np.nan_to_num(value)
 
     
     def _free_grad(self):
-        if self.requires_grad is False: self.grad = None
+        if self.requires_grad is False: self._grad = None
+
+
+    def _update_nans_opt(self, children):
+        if not any(c._NaNs for c in children):
+            self.data = np.nan_to_num(self.data)
+        else:
+            self._NaNs = True
 
 
     def _parent_of(self, children):
+        self._update_nans_opt(children)
         self._children = children
         return self
 
@@ -62,9 +70,12 @@ class Tensor:
         self._backward = backward
         return self
 
-    
+
+    def keep_nans(self): self._NaNs = True
+
     def retain_grad(self): self.requires_grad = True
 
+    def zero_grad(self): self._grad = None
     
     def backward(self, debug=False):
         """
@@ -91,7 +102,7 @@ class Tensor:
         # chain rule result.
         # Backpropagation is done assuming the node calling .backward()
         # is the last of the operation grah
-        self.grad, prev_v = np.array(1.0), None
+        self._grad, prev_v = np.array(1.0), None
 
         # For each node, apply the chain rule to get its gradient
         for v in reversed(sorted_grah):
@@ -102,7 +113,7 @@ class Tensor:
             except:
                 if not debug: raise
                 traceback.print_exc()
-                v.grad = "#Exception"
+                v._grad = "#Exception"
 
             if debug: v.requires_grad = True
             prev_v = v
@@ -157,7 +168,6 @@ class Tensor:
     def mean(self): return self.sum()/sum(x for x in self.shape)
     def logsoftmax(self, axis): return self.softmax(axis).log()
 
-
     #   ~~~ activation functions ~~~
     def sigmoid(self): return 1.0/(1.0 + (-self).exp())
     def tanh(self): return 2.0 * ((2.0 * self).sigmoid()) - 1.0
@@ -184,7 +194,7 @@ class Tensor:
         return self(np.arange(start=start, stop=stop), **kwargs)
 
     @classmethod
-    def uniform(self, shape, low=0.0, high=1.0, **kwargs): 
+    def uniform(self, *shape, low=0.0, high=1.0, **kwargs): 
         return self(np.random.uniform(low=low, high=high, size=shape), **kwargs)
 
     @classmethod
@@ -198,7 +208,13 @@ class Tensor:
     def shape(self): return self.data.shape
 
     @property
-    def T(self): self.data = self.data.T; return self 
+    def T(self): self.data = self.data.T; return self
+
+    @property
+    def grad(self):
+        if self._grad is None: 
+            warnings.warn(f"Access of empty gradient: tensor(shape={self.shape}, requires_grad={self.requires_grad}, label={self.label})")
+        return self._grad
 
 
 class Function:
@@ -213,8 +229,8 @@ class Function:
 
     def __init__(self, *args, brodcastable=False):
         if brodcastable: self._brodcast(*args)
-        #Tensor(np.nan_to_num(self.forward()))
-        self.out = Tensor(np.nan_to_num(self.forward()))\
+
+        self.out = Tensor(self.forward())\
             ._parent_of(tuple(args))\
             ._result_of_op(self.op)\
             ._set_backward(self.backward)
@@ -253,3 +269,6 @@ class Function:
 
     def backward(self):
         raise RuntimeError("Backward pass was not defined.")
+
+
+def to_tensor(data, **kargs): return Tensor(data, **kargs)

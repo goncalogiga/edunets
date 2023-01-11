@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.ma as ma
-from edunets.tensor import Function
+from edunets.tensor import Function, to_tensor
 from edunets.expanders import expand_by_repeating
 
 
@@ -199,3 +199,8 @@ class getitem(Function):
         z = np.zeros(self.a.shape)
         z[self.items] = self.out.grad
         self.a._update_grad(z)
+
+
+# === functions without grad ===
+
+def argmax(t, **kargs): return to_tensor(np.argmax(t.data, **kargs))
