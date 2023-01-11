@@ -8,8 +8,9 @@ from edunets import functions as f
 from edunets.visualisations import draw_dot
 
 # Types accepted by the Tensor constructor
-TensorContent = typing.Union[int, float, list, np.ndarray]
-TensorOpArgs = typing.Union[int, float, list, np.ndarray, 'Tensor']
+TensorContent = typing.Union[int, float, np.ndarray, typing.List[float]]
+TensorOpArgs = typing.Union[int, float, np.ndarray, typing.List[float], 'Tensor']
+
 
 class Tensor:
     """
