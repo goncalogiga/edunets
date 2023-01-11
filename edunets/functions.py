@@ -112,7 +112,7 @@ class matmul(BinaryOp):
 
     def forward(self):
         if self.a.data.shape[-1] != self.b.data.shape[0]:
-            raise ValueError(f"Matrix of shape {self.a.shape} cannot be multiplied with one of shape {self.b.shape}.")
+            raise ValueError(f"Invalid matrix operation: {self.a.shape} dot {self.b.shape}.")
         return self.a.data @ self.b.data
 
     def backward(self):
