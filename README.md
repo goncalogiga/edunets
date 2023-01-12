@@ -1,4 +1,4 @@
-# edunets (work in progress)
+# edunets
 
 Edunets is a very simple automatic differentiation engine built to be easily understood and give a better insight on how neutal networks work under the hood. It focuses solely on the algorithmic aspect of the automatic differentiation, so it has no GPU support and no massive optimizations.
 
@@ -10,7 +10,160 @@ The notebook ```demos.ipynb``` demonstrates some of the things edunets can do.
 pip3 install https://github.com/goncalogiga/edunets
 ```
 
-## Example
+## Introduction
+
+### Loss, Chain Rule and Automatic differentiation
+
+The main class ```Tensor``` defined under ```edunets/tensor.py```, acts like a wrapper arround a numpy array, in order to track every operation done to the tensor. For example, this is the graph that tracks some operations done on a tensor X:
+
+```{python3}
+import numpy as np
+from edunets.tensor import Tensor
+
+X = Tensor([1.0, 2.0, 3.0], label='X')
+result = X**2 + 5*X + 1
+assert (result.data == np.array([7.0, 15.0, 25.0])).all()
+result.graph
+```
+
+<img src="images/graph1.png" width="800" height="200" />
+
+The reason we keep this 'operation' graph is so we can calculate gradients that can then be used to optimize the weights of neural networks layers. This is clearer if we consider an actual neural netowrk. Here is a simple two layered neural network with linear layers and a reLU activation function. This can be used to classify the MNIST dataset:
+
+```{python3}
+class EduNet1:
+    def __init__(self):
+        stdv1, stdv2 = 1./np.sqrt(28*28), 1./np.sqrt(128)
+        self.l1 = Tensor.uniform(128, 28*28, low=-stdv1, high=stdv1, requires_grad=True, label="L1")
+        self.l2 = Tensor.uniform(10, 128, low=-stdv2, high=stdv2, requires_grad=True, label="L2")
+
+    def __call__(self, x):
+        return (x @ self.l1.T).relu() @ self.l2.T
+
+model = EduNet1()
+model(Tensor.uniform(28*28)).graph
+```
+
+<img src="images/graph2.png" width="950" height="200" />
+
+We can see both the layer L1 and L2 have ```requires_grad``` set to ```True```. This is because those are the two gradients we care about. After passing a 28x28 image through this model, we get a vector with 10 values, each corresponding to the network's confidence that the input image is the digit corresponding to the vector's index.
+
+Once we have the model's prediction, we can compare it to the real label the input had. This is done via the loss function. A loss function compares the predictions with the true labels of the training data and outputs a score on how well the model is peforming at the classification task.
+
+"Training" the model actualy means updating the values in the L1 and L2 matrices so they give better and better outputs when predicting the digits. This is why we keep their gradients. Gradients are basicly derivatives and we know derivatives give information about the slope of a function. The "derivative" of the loss with respect to L1 will give us information (thanks to the slope) on how L1 impacts the loss' behavior. Since we want to minimize the loss, we just have to change L1, given the information of the "derivative", so that the loss will decrease after we change L1 (same thing for L2).
+
+It's for this reason we keep the "operation" graph, because we want to be able to compute the gradient (ie. the "derivative") of the loss with respect to the layers. The entire "operation" graph is necessary since the derivatives are calculated using the chain rule, which involves every operations, from the model to the loss calculation.
+
+Let's use a dummy loss that takes the sum of the dot product between the prediction and the true label and add a name to each operation:
+
+```{python3}
+# Dummy Loss: (input @ target).sum()
+
+model = EduNet1()
+input, target = Tensor.uniform(28*28, label="X_train"), Tensor([1.0] + 9*[0.0], label="y_pred")
+s1 = input @ model.l1.T; s1.label = "A"
+s2 = s1.relu(); s2.label = "B"
+s3 = s2 @ model.l2.T; s3.label = "C"
+s4 = s3 @ target; s4.label = "D"
+loss = s4.sum(); loss.label = "loss"
+loss.graph
+```
+
+<img src="images/graph3.png" width="1000" height="200" />
+
+We get the graph with every intermediate step labeled. As we mentioned, the goal is now to get the "derivative" of the loss with respect to L1 and L2. This is done using the chain rule, a calculus formula.
+
+Mathematicly, the chain rules states that, if a variable z depends on the variable y, which itself depends on the variable x, then z depends on x as well, via the intermediate variable y. The chain rule is therefore expressed as:
+
+<img src="images/eq0.png" width="100" height="50" />
+
+We can think of the chain rule as "simplifying" the dy in the multiplication of the derivatives. 
+
+Having the chain rule formula, it's easy to apply it to our previous graph in order to get the formulas of the two derivates we are intrested in:
+
+<img src="images/eq1.png" width="220" height="100" />
+
+Of course, every label corresponds to an actual function that we can also explicitly write:
+
+<img src="images/eq2.png" width="390" height="120" />
+
+It should be clear why we actualy need to register every operation an input goes through up to the final loss score computation. Without the intermediate operations, we don't have enough informations to calculate the gradients we need in order to correctly update the weights of L1 and L2.
+
+In practice these computations are done by [topologicaly sorting the "operation" graph](https://en.wikipedia.org/wiki/Topological_sorting#:~:text=In%20computer%20science%2C%20a%20topological,before%20v%20in%20the%20ordering.). This makes it so we can descend the graph starting from the ```loss``` node and always calculate the gradients (derivatives) and then use previous gradients calculation to multiply them together and progressivly compute the entire chain. This is illustrated in the following picture (values don't mean anything here, this should actualy be matrices insted of scalars):
+
+<img src="images/eq3.png" width="385" height="300" style="display: block; margin-left: auto; margin-right: auto; width: 30%;"/>
+
+All these computations can be done by calling the ```backward()``` method on the last node of the graph. After all the backward passes are computed, we can check the value of the L1 gradient:
+
+```{python3}
+print("Gradient of L1 before backward pass:", model.l1.grad)
+loss.backward()
+print("Gradient of L1 after backward pass:", model.l1.grad)
+```
+
+```{python3}
+Gradient of L1 before backward pass: None
+Gradient of L1 after backward pass: [[-0.00776756 -0.00902132 -0.00229285 ... -0.00229511 -0.0002794
+  -0.01371739]
+ [-0.03960229 -0.04599447 -0.01168991 ... -0.01170141 -0.00142448
+  -0.06993698]
+ [ 0.04102574  0.04764769  0.01211009 ...  0.012122    0.00147568
+   0.07245078]
+ ...
+ [ 0.04925122  0.05720084  0.01453811 ...  0.01455241  0.00177155
+   0.08697684]
+ [ 0.01209177  0.0140435   0.00356928 ...  0.00357279  0.00043494
+   0.02135387]
+ [-0.02743734 -0.031866   -0.00809903 ... -0.00810699 -0.00098691
+  -0.0484539 ]]
+```
+
+The final step is to use these gradients to update the values of L1 and L2, which act like the weights of our very simple neural network. Updating the weights is done by what is called an optimizer; a very simple and common optimizer is the [stochastic gradient descent algorithm](https://en.wikipedia.org/wiki/Stochastic_gradient_descent). We will not go over the theory of this algorithm here, since what matters to us is that this gives us a mathematical expression that can update the values of L1 and L2, using their gradients, in a way that will eventualy tweak the loss in order to make it decrease. This is the class defining the stochastic gradient descent:
+
+```{python3}
+class SGD:
+    def __init__(self, params, lr=0.001):
+        self.lr = lr
+        self.params = params
+
+    def step(self):
+        for t in self.params:
+            t.data = t.data - t.grad * self.lr # this is the formula of the stochastic gradient descent (updates L1 and L2)
+
+    def zero_grad(self):
+        for param in self.params:
+            param.zero_grad()
+```
+
+The params of the SGD class will be a list where both layers will be stored: ```[model.l1, model.l2]```. The learning rate is a paramater used to control how the gradient impacts the modifications on the layers' data. The proper update of the layers will be done in the ```step()``` method. We will explain why it is important to clear out the gradients after each itteration later when we showcase some operations and how the gradients are actualy computed in edunets.
+
+Now we are all set to write a training loop. The base skeleton of the loop will look a little bit like this:
+
+```{python3}
+for i in range(epochs):
+    # Take a training sample X (often taken in batches) with their respective labels Y
+    ...
+
+    out = model(X)
+
+    loss = loss(out, Y)
+    
+    optim.zero_grad()
+    
+    loss.backward()
+    
+    optim.step()
+
+    # Store the loss and calculate accuracy to evaluate how well the model is learning
+    ...
+
+# Now use the testing part of the dataset to see how well the model is able to generalize the training data
+...
+
+And that's it! With the right loss and enough training steps, we now have a neural network that can accurately clasify the MNIST dataset!
+```
+
+## Forward and Backward passes in Edunet's
 
 TODO
 

@@ -4,7 +4,7 @@ import typing
 import warnings
 import traceback
 import numpy as np
-from edunets import functions as f
+from edunets import ops as op
 from edunets.visualisations import draw_dot
 
 # Types accepted by the Tensor constructor
@@ -59,7 +59,7 @@ class Tensor:
     + _children : tuple
         a tuple storing the tensors involved in the operation responsible for
         the creation of the present tensor
-    + _is_leaf : bool
+    + _is_static : bool
         if true this tensor will never have its gradient computed (usefull for constant tensors)
     + _grad: np.ndarray
         numpy array representing the gradient of the matrix stored in self.data.
@@ -73,7 +73,7 @@ class Tensor:
     _op: str = ""
     _NaNs: bool = False
     _children: tuple = ()
-    _is_leaf: bool = False
+    _is_static: bool = False
     _grad: np.ndarray = None
 
 
@@ -125,7 +125,7 @@ class Tensor:
         + value: np.ndarray
             new value given to the gradient of the tensor
         """
-        if self._is_leaf: return self
+        if self._is_static: return
         if self._grad is None: self._grad = 0
         self._grad += value if self._NaNs else np.nan_to_num(value)
 
@@ -186,11 +186,11 @@ class Tensor:
         return self
 
 
-    def _set_as_leaf(self) -> 'Tensor':
+    def _set_as_static(self) -> 'Tensor':
         """
-        Sets this tensor as a 'leaf' tensor (no gradients will be computed)
+        Sets this tensor as a 'static' tensor (no gradients will be computed)
         """
-        self._is_leaf = True
+        self._is_static = True
         return self
 
 
@@ -240,6 +240,7 @@ class Tensor:
         if self.shape != (1,):
             raise RuntimeError("Edunets' back propagation only supports scalar outputs.")
 
+        # === topological sort of the operations' graph ===
         sorted_grah, visited = [], set()
         
         def topological_sort(v):
@@ -251,8 +252,8 @@ class Tensor:
 
                 sorted_grah.append(v)
 
-        # Topological sort of the graph of operations
         topological_sort(self)
+        # ===                                           ===
 
         # Initial gradient (last node) is set to 1.0 so we can calculate the first
         # chain rule result.
@@ -265,6 +266,8 @@ class Tensor:
             if prev_v: prev_v._free_grad()
 
             try:
+                # This function updates the gradient using its parent
+                # gradient (already calculated thanks to the topological sort)
                 v._backward()
             except:
                 if not debug: raise
@@ -284,25 +287,25 @@ class Tensor:
     def __ne__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data != other.data)
 
     # === base operations ===
-    def __add__(self, other: TensorOpArgs) -> 'Tensor': return f.add(self, other).out
-    def __mul__(self, other: TensorOpArgs) -> 'Tensor': return f.mul(self, other).out
-    def __pow__(self, other: TensorOpArgs) -> 'Tensor': return f.pow(self, other).out
-    def __matmul__(self, other: TensorOpArgs) -> 'Tensor': return f.matmul(self, other).out
+    def __add__(self, other: TensorOpArgs) -> 'Tensor': return op.add(self, other).out
+    def __mul__(self, other: TensorOpArgs) -> 'Tensor': return op.mul(self, other).out
+    def __pow__(self, other: TensorOpArgs) -> 'Tensor': return op.pow(self, other).out
+    def __matmul__(self, other: TensorOpArgs) -> 'Tensor': return op.matmul(self, other).out
     
-    def cos(self) -> 'Tensor': return f.cos(self).out
-    def sin(self) -> 'Tensor': return f.sin(self).out
-    def exp(self) -> 'Tensor': return f.exp(self).out
-    def log(self) -> 'Tensor': return f.log(self).out
+    def cos(self) -> 'Tensor': return op.cos(self).out
+    def sin(self) -> 'Tensor': return op.sin(self).out
+    def exp(self) -> 'Tensor': return op.exp(self).out
+    def log(self) -> 'Tensor': return op.log(self).out
 
-    def max(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return f.max(self, axis=axis, keepdims=keepdims).out
-    def min(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return f.min(self, axis=axis, keepdims=keepdims).out
-    def sum(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return f.sum(self, axis=axis, keepdims=keepdims).out
+    def max(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.max(self, axis=axis, keepdims=keepdims).out
+    def min(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.min(self, axis=axis, keepdims=keepdims).out
+    def sum(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.sum(self, axis=axis, keepdims=keepdims).out
 
-    def relu(self) -> 'Tensor': return f.relu(self).out
+    def relu(self) -> 'Tensor': return op.relu(self).out
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 
-        return f.getitem(self, items).out
+        return op.getitem(self, items).out
 
     # === operations based on the previous ones ===
     def __sub__(self, other: TensorOpArgs) -> 'Tensor': return self + (-other)
@@ -365,104 +368,10 @@ class Tensor:
     def shape(self) -> typing.Tuple[int, ...]: return self.data.shape
 
     @property
-    def T(self) -> 'Tensor': self.data = self.data.T; return self
+    def T(self) -> 'Tensor': return op.T(self).out
 
     @property
     def grad(self) -> np.ndarray:
         if self._grad is None: 
             warnings.warn(f"Access of empty gradient: tensor(shape={self.shape}, requires_grad={self.requires_grad}, label={self.label})")
         return self._grad
-
-
-class Function:
-    """
-    A class that every tensor operation class should inherit from
-
-    Attributes
-    ----------
-    + brodcastable : bool
-        ...
-    + out: Tensor
-        ...
-
-    Methods
-    -------
-    + forward()
-        ...
-    + backward()
-        ...
-    + is_tensor()
-        ...
-    """
-    def __prepare__(self, *args) -> typing.Union[Tensor, typing.Tuple[Tensor]]:
-        """
-        
-        """
-        new_args = tuple(
-            arg if isinstance(arg, Tensor) else Tensor(arg, requires_grad=False)._set_as_leaf()\
-            for arg in args  
-        )
-        return new_args if len(args) > 1 else new_args[0]
-
-
-    def __init__(self, *args, brodcastable: bool=False) -> 'Function':
-        """
-        
-        """
-        if brodcastable: self._brodcast(*args)
-
-        self.out = Tensor(self.forward())\
-            ._parent_of(tuple(args))\
-            ._result_of_op(self.op)\
-            ._set_backward(self.backward)
-
-
-    def _brodcast(self, *args) -> None:
-        """
-        
-        """
-        if len(args) != 2:
-            raise ValueError("_brodcast method can only deal with dual operations.")
-        a, b = args[0], args[1]
-
-        if not (a.shape == b.shape or a._is_leaf or b._is_leaf):
-            try:
-                brodcast_shape = np.broadcast(a.data, b.data).shape
-            except ValueError:
-                raise ValueError(f"Shape of tensors mismatch: {a.shape} x {b.shape}.")
-        
-            a_shape, b_shape = a.shape, b.shape
-            
-            if a_shape != brodcast_shape:
-                a.data = np.broadcast_to(a.data, brodcast_shape)
-            if b_shape != brodcast_shape:
-                b.data = np.broadcast_to(b.data, brodcast_shape)
-            
-            if (a.requires_grad and a_shape != a.shape) or (b.requires_grad and b_shape != b.shape):
-                warnings.warn("""Edunets can only brodcast by reshaping tensors inplace,
-                beware of those changes if the brodcasted tensors are used elsewhere.""")
-
-    
-    def is_tensor(self, candidate: typing.Any) -> bool:
-        """
-        
-        """
-        return isinstance(candidate, Tensor)
-
-
-    def forward(self) -> None:
-        """
-        
-        """
-        raise RuntimeError("Forward pass was not defined.")
-
-
-    def backward(self) -> None:
-        """
-        
-        """
-        raise RuntimeError("Backward pass was not defined.")
-
-
-# Tensor constructor to avoid circular imports
-def to_tensor(data: TensorContent, **kargs) -> Tensor: return Tensor(data, **kargs)
