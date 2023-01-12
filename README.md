@@ -6,7 +6,7 @@ The notebook ```demos.ipynb``` demonstrates some of the things edunets can do.
 
 ## Installation
 
-```{bash}
+```bash
 pip3 install https://github.com/goncalogiga/edunets
 ```
 
@@ -16,7 +16,7 @@ pip3 install https://github.com/goncalogiga/edunets
 
 The main class ```Tensor``` defined under ```edunets/tensor.py```, acts like a wrapper arround a numpy array, in order to track every operation done to the tensor. For example, this is the graph that tracks some operations done on a tensor X:
 
-```{python3}
+```python
 import numpy as np
 from edunets.tensor import Tensor
 
@@ -30,7 +30,7 @@ result.graph
 
 The reason we keep this 'operation' graph is so we can calculate gradients that can then be used to optimize the weights of neural networks layers. This is clearer if we consider an actual neural netowrk. Here is a simple two layered neural network with linear layers and a reLU activation function. This can be used to classify the MNIST dataset:
 
-```{python3}
+```python
 class EduNet1:
     def __init__(self):
         stdv1, stdv2 = 1./np.sqrt(28*28), 1./np.sqrt(128)
@@ -56,7 +56,7 @@ It's for this reason we keep the "operation" graph, because we want to be able t
 
 Let's use a dummy loss that takes the sum of the dot product between the prediction and the true label and add a name to each operation:
 
-```{python3}
+```python
 # Dummy Loss: (input @ target).sum()
 
 model = EduNet1()
@@ -91,17 +91,17 @@ It should be clear why we actualy need to register every operation an input goes
 
 In practice these computations are done by [topologicaly sorting the "operation" graph](https://en.wikipedia.org/wiki/Topological_sorting#:~:text=In%20computer%20science%2C%20a%20topological,before%20v%20in%20the%20ordering.). This makes it so we can descend the graph starting from the ```loss``` node and always calculate the gradients (derivatives) and then use previous gradients calculation to multiply them together and progressivly compute the entire chain. This is illustrated in the following picture (values don't mean anything here, this should actualy be matrices insted of scalars):
 
-<img src="images/eq3.png" width="385" height="300" style="display: block; margin-left: auto; margin-right: auto; width: 30%;"/>
+<img src="images/eq3.png" width="500" height="400"/>
 
 All these computations can be done by calling the ```backward()``` method on the last node of the graph. After all the backward passes are computed, we can check the value of the L1 gradient:
 
-```{python3}
+```python
 print("Gradient of L1 before backward pass:", model.l1.grad)
 loss.backward()
 print("Gradient of L1 after backward pass:", model.l1.grad)
 ```
 
-```{python3}
+```python
 Gradient of L1 before backward pass: None
 Gradient of L1 after backward pass: [[-0.00776756 -0.00902132 -0.00229285 ... -0.00229511 -0.0002794
   -0.01371739]
@@ -120,7 +120,7 @@ Gradient of L1 after backward pass: [[-0.00776756 -0.00902132 -0.00229285 ... -0
 
 The final step is to use these gradients to update the values of L1 and L2, which act like the weights of our very simple neural network. Updating the weights is done by what is called an optimizer; a very simple and common optimizer is the [stochastic gradient descent algorithm](https://en.wikipedia.org/wiki/Stochastic_gradient_descent). We will not go over the theory of this algorithm here, since what matters to us is that this gives us a mathematical expression that can update the values of L1 and L2, using their gradients, in a way that will eventualy tweak the loss in order to make it decrease. This is the class defining the stochastic gradient descent:
 
-```{python3}
+```python
 class SGD:
     def __init__(self, params, lr=0.001):
         self.lr = lr
@@ -139,7 +139,7 @@ The params of the SGD class will be a list where both layers will be stored: ```
 
 Now we are all set to write a training loop. The base skeleton of the loop will look a little bit like this:
 
-```{python3}
+```python
 for i in range(epochs):
     # Take a training sample X (often taken in batches) with their respective labels Y
     ...
@@ -159,9 +159,9 @@ for i in range(epochs):
 
 # Now use the testing part of the dataset to see how well the model is able to generalize the training data
 ...
+```
 
 And that's it! With the right loss and enough training steps, we now have a neural network that can accurately clasify the MNIST dataset!
-```
 
 ## Forward and Backward passes in Edunet's
 
