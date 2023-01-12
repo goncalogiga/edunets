@@ -91,7 +91,9 @@ It should be clear why we actualy need to register every operation an input goes
 
 In practice these computations are done by [topologicaly sorting the "operation" graph](https://en.wikipedia.org/wiki/Topological_sorting#:~:text=In%20computer%20science%2C%20a%20topological,before%20v%20in%20the%20ordering.). This makes it so we can descend the graph starting from the ```loss``` node and always calculate the gradients (derivatives) and then use previous gradients calculation to multiply them together and progressivly compute the entire chain. This is illustrated in the following picture (values don't mean anything here, this should actualy be matrices insted of scalars):
 
+<p align="center">
 <img src="images/eq3.png" width="500" height="400"/>
+</p>
 
 All these computations can be done by calling the ```backward()``` method on the last node of the graph. After all the backward passes are computed, we can check the value of the L1 gradient:
 
