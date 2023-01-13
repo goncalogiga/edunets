@@ -69,7 +69,7 @@ loss = s4.sum(); loss.label = "loss"
 loss.graph
 ```
 
-<img src="images/graph3.png" width="1000" height="200" />
+<img src="images/graph3.png" width="800" height="150" />
 
 We get the graph with every intermediate step labeled. As we mentioned, the goal is now to get the "derivative" of the loss with respect to L1 and L2. This is done using the chain rule, a calculus formula.
 
