@@ -194,6 +194,59 @@ def sin(self) -> Tensor: return (np.pi/2 - self).cos()
 def tan(self) -> Tensor: return self.sin()/self.cos()
 ```
 
+It is now time to explain why it is important to free the gradients when in a training a loop. To see why, we have to look at what the function ```_update_grad``` defined in the ```cos``` class actualy does:
+
+```python
+def _update_grad(self, value: np.ndarray) -> None:
+    if self._is_static: return
+    if self._grad is None: self._grad = 0
+    # Important thing to notice: self._grad is not an assignement but a sum !
+    self._grad += value if self._NaNs else np.nan_to_num(value)
+```
+
+As we can see, ```self._grad``` is updated by adding the value of the backward pass to an already existing gradient value. This is because a single tensor can be in different operations meaning the gradient needs to accumulate the values of the backward passes until the user specificaly tells it to reset using methods like ```zero_grad()```. Here is an example of a tensor being used to times:
+
+```python
+# === a is added to itself ===
+a = Tensor([2.0], requires_grad=True)
+
+b = a + 2
+
+b.backward()
+print(a.grad)
+
+c = a + b
+
+c.backward()
+print(a.grad)
+
+# === a is added to a constant ===
+a = Tensor([2.0], requires_grad=True)
+
+b = a + 2
+
+b.backward()
+print(a.grad)
+
+# By using b.data we can see what would happen if gradients
+# were assigned insted of added to their previous values
+c = a + b.data # -> b.data is considered a constant
+
+c.backward()
+print(a.grad)
+```
+
+```python
+1.0
+3.0
+1.0
+2.0
+```
+
+Here we have two examples of very simple calculations. In the first one, a is added to itself while in the secound example this doesn't happen. This secound example mimics the behavior of a gradient that is assigned instead of being summed up. As we can see the correct result is 3.0 since the value of the gradient of the secound calculation needs to be added to the first one otherwise only the value of the last gradient is taken into consideration.
+
+This makes methods like ```zero_grad()``` inevitable when updating gradients using a trainig loop. If gradients are not cleared up, they accumulate the values of the previous training itteration and it will impossible for the model to learn correctly.
+
 ## Tests
 
 TODO
