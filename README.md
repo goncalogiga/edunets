@@ -166,7 +166,7 @@ for i in range(epochs):
 
 And that's it! With the right loss and enough training steps, we now have a neural network that can accurately clasify the MNIST dataset!
 
-## Forward and Backward passes in Edunet's
+### Forward and Backward passes in Edunet's
 
 TODO
 
