@@ -194,7 +194,7 @@ def sin(self) -> Tensor: return (np.pi/2 - self).cos()
 def tan(self) -> Tensor: return self.sin()/self.cos()
 ```
 
-It is now time to explain why it is important to free the gradients when working with a training loop. To see why, we have to look at what the function ```_update_grad``` defined in the ```cos``` class actualy does:
+It is now time to explain why it is important to free the gradients when working with a training loop. To see why, we have to look at what the function ```_update_grad``` actualy does:
 
 ```python
 def _update_grad(self, value: np.ndarray) -> None:
