@@ -166,9 +166,33 @@ for i in range(epochs):
 
 And that's it! With the right loss and enough training steps, we now have a neural network that can accurately clasify the MNIST dataset!
 
-### Forward and Backward passes in Edunets
+### Easy to read forward and backward passes in Edunets
 
-TODO
+Forward and Backward passes are the two main computations happening when tensor operations are done. The forward pass is the actual computation of the operation while the backward pass computes the gradient of this operation with respect to the resulting tensor. In Pytorch, the backward pass can be [pretty hard to understand](https://github.com/pytorch/pytorch/blob/master/tools/autograd/derivatives.yaml) since this is something so important it needs to have the best performance possible. 
+
+In edunets, we don't really care about performances, so every operation has its forward and backward pass explicitly available. All base operations are written in ```edunets/ops.py``` while operations that can be derived from these base operations are directly defined in ```edunets/tensor.py```.
+
+Here is for instance, how the cosine operation is implemented in ```edunets/ops.py```:
+
+```python
+class cos(UnaryOp):
+    op: str = "cos"
+
+    def forward(self) -> np.ndarray:
+        return np.cos(self.a.data)
+
+    def backward(self) -> None:
+        self.a._update_grad(-np.sin(self.a.data) * self.out.grad)
+```
+
+Operators' classes are organized so that ```self.a``` is the tensor engaged in the operation (for binary operations we have ```self.a``` and ```self.b```, ect.) and the resulting tensor is stored in ```self.out```. We can see that the forward pass simply returns the value of the tensor ```self.a``` after going through a cosine function. The backward pass computes the chain rule, so we multiply the derivative of ```self.forward(self.a)```, which is of course ```-sin(a)```, and multiply it by the previous gradient that was computed, ```self.out.grad```.
+
+This makes it easy to see how certain operations' gradients are computed. To avoid overcrowding ```edunets/ops.py```, we try to minimize the amout of operations defined there. Every time we can, the definition of new operations are in ```edunets/tensor.py``` and we use a mathematical formula using operations of ```edunets/ops.py``` to define them. For example, instead of also defining ```sin``` and ```tan``` we prefer to define the following operations in ```edunets/tensor.py```:
+
+```python
+def sin(self) -> Tensor: return (np.pi/2 - self).cos()
+def tan(self) -> Tensor: return self.sin()/self.cos()
+```
 
 ## Tests
 

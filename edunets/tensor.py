@@ -293,7 +293,6 @@ class Tensor:
     def __matmul__(self, other: TensorOpArgs) -> 'Tensor': return op.matmul(self, other).out
     
     def cos(self) -> 'Tensor': return op.cos(self).out
-    def sin(self) -> 'Tensor': return op.sin(self).out
     def exp(self) -> 'Tensor': return op.exp(self).out
     def log(self) -> 'Tensor': return op.log(self).out
 
@@ -318,6 +317,7 @@ class Tensor:
     def __rtruediv__(self, other: TensorContent) -> 'Tensor': return other * self**(-1)
 
     def __neg__(self) -> 'Tensor': return -1 * self
+    def sin(self) -> 'Tensor': return (np.pi/2 - self).cos()
     def tan(self) -> 'Tensor': return self.sin()/self.cos()
 
     # === more advanced operations ===

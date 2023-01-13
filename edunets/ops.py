@@ -75,20 +75,6 @@ class cos(UnaryOp):
         self.a._update_grad(-np.sin(self.a.data) * self.out.grad)
 
 
-class sin(UnaryOp):
-    """
-    + Sinus
-    The 'derivative' is cos of a
-    """
-    op: str = "sin"
-
-    def forward(self) -> np.ndarray:
-        return np.sin(self.a.data)
-
-    def backward(self) -> None:
-        self.a._update_grad(np.cos(self.a.data) * self.out.grad)
-
-
 class T(UnaryOp):
     """
     + Transposition
