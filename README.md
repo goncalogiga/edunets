@@ -12,7 +12,7 @@ pip3 install https://github.com/goncalogiga/edunets
 
 ## Introduction
 
-### Loss, Chain Rule and Automatic differentiation
+### Loss, chain rule and optimizer from scratch
 
 The main class ```Tensor``` defined under ```edunets/tensor.py```, acts like a wrapper arround a numpy array, in order to track every operation done to the tensor. For example, this is the graph that tracks some operations done on a tensor X:
 
