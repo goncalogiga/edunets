@@ -44,7 +44,7 @@ model = EduNet1()
 model(Tensor.uniform(28*28)).graph
 ```
 
-<img src="images/graph2.png" width="950" height="200" />
+<img src="images/graph2.png" width="750" height="150" />
 
 We can see both the layer L1 and L2 have ```requires_grad``` set to ```True```. This is because those are the two gradients we care about. After passing a 28x28 image through this model, we get a vector with 10 values, each corresponding to the network's confidence that the input image is the digit corresponding to the vector's index.
 
