@@ -130,7 +130,8 @@ class SGD:
 
     def step(self):
         for t in self.params:
-            t.data = t.data - t.grad * self.lr # this is the formula of the stochastic gradient descent (updates L1 and L2)
+            # formula for the stochastic gradient descent (updates L1 and L2)
+            t.data = t.data - t.grad * self.lr
 
     def zero_grad(self):
         for param in self.params:
