@@ -19,6 +19,9 @@ class Function:
         the other Tensor it is being computed with.
         Example: [2] * [1, 1, 1] will be changed to [2, 2, 2] * [1, 1, 1] prior
         to the actual multiplication of matrices
+    + dtype: type
+        The data type of the tensor returned by the forward method. This should be set
+        by the classes that inherits from Function
     + out: Tensor
         out contains the actual numeric result of the forward pass in the form of a Tensor.
 
@@ -29,6 +32,9 @@ class Function:
     + backward()
         backard needs to be implemented so the backpropagation algorithm can work 
     """
+    dtype: type = np.float32
+
+
     def __init__(self, *args, brodcastable: bool=False):
         """
         Function initialization that creates the result of the operation
@@ -49,7 +55,7 @@ class Function:
 
         if brodcastable: self._brodcast(*args)
 
-        self.out = Tensor(self.forward())\
+        self.out = Tensor(self.forward(), dtype=self.dtype)\
             ._parent_of(tuple(args))\
             ._result_of_op(self.op)\
             ._set_backward(self.backward)

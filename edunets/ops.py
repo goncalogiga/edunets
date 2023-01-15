@@ -205,6 +205,22 @@ class matmul(BinaryOp):
         self.b._update_grad(self._backward_b())
 
 
+class cmp(Function):
+    def __init__(self, a, b, cmp_fn, cmp_op):
+        self.op = cmp_op
+        self.dtype = bool
+        self.cmp_fn = cmp_fn
+        self.a, self.b = self.__prepare__(a, b)
+        super().__init__(self.a, self.b)
+
+    def forward(self) -> np.ndarray:
+        return self.cmp_fn(self.a.data, self.b.data)
+
+    # No backward for comparisons
+    def backward(self) -> None:
+        pass
+
+
 # == Reduction Ops ===
 
 
@@ -282,45 +298,40 @@ class getitem(Function):
         operation will be performed. As a Tensor it has both a `data` attribute
         storing the actual result of the operation and a `_upgrade_grad` method
         used to calculate the backward pass.
-    + items: Union[int, slice, typing.List[int], np.ndarray, Tensor]
+    + items: Union[int, slice, ellipsis, typing.List[int], np.ndarray, Tensor]
         The items that should be extracted from the Tensor
     """
     op: str = "[*]"
+
+
+    def __prepare_item__(self, item):
+        """
+        Prepare items so they can act like indexes
+        """
+        from edunets.tensor import Tensor
+
+        if isinstance(item, Tensor):
+            item = item.data if item.dtype == bool else item.data.astype(int)
+        if isinstance(item, list):
+            item = [it.data if isinstance(it, Tensor) else it for it in item]
+        if isinstance(item, np.ndarray):
+            item = item if item.dtype == bool else item.astype(int)
+
+        return item
+
 
     def __init__(self, a, items):
         """
         Paramaters are explained in this class' docstring
         """
         self.a = a
-        self.items = items
 
-        self.__prepare__()
-        super().__init__(self.a)
-
-
-    def __prepare__(self):
-        """
-        Converts tensors to integers so they can act like indexes
-        TODO: do the same thing for slices
-        """
-        from edunets.tensor import Tensor
-
-        is_itter: bool = True
-
-        if isinstance(self.items, tuple): 
-            self.items = list(self.items)
-
-        if isinstance(self.items, list):
-            for i, item in enumerate(self.items):
-                if isinstance(item, Tensor):
-                    self.items[i] = item.data.astype(int)
-        elif isinstance(self.items, Tensor):
-            self.items = self.items.data.astype(int)
+        if isinstance(items, tuple):
+            self.items = tuple(self.__prepare_item__(it) for it in items)
         else:
-            is_itter = False
+            self.items = self.__prepare_item__(items)
 
-        if is_itter and not isinstance(self.items, slice): 
-            self.items = tuple(self.items)
+        super().__init__(self.a)
 
 
     def forward(self) -> np.ndarray:

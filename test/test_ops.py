@@ -21,7 +21,7 @@ def assert_backward_pass(edunets_tensors, pytorch_tensors, edunets_out, pytorch_
     except:
         print("[!] Pytroch backward pass failed")
         raise
-    
+
     edunets_out.backward(np.ones(edunets_out.shape))
 
     for i, (et, pt) in enumerate(zip(edunets_tensors, pytorch_tensors)):
@@ -125,9 +125,15 @@ class TestOps(unittest.TestCase):
         assert_passes(lambda a: a[-1], self.a)
 
     def test_getitem3(self):
+        assert_passes(lambda a: a[0:3], self.a)
+
+    def test_getitem4(self):
+        assert_passes(lambda a: a[a[0] > 0.0], self.a)
+
+    def test_getitem5(self):
         assert_passes(lambda a: a[:, 0], self.a)
     
-    def test_getitem4(self):
+    def test_getitem6(self):
         assert_passes(lambda a: a[np.array(1)], self.a)
 
     def test_log1(self):

@@ -283,12 +283,12 @@ class Tensor:
 
 
     # === comparisons ===
-    def __gt__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data > other.data)
-    def __lt__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data < other.data)
-    def __ge__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data >= other.data)
-    def __le__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data <= other.data)
-    def __eq__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data == other.data)
-    def __ne__(self, other: 'Tensor') -> 'Tensor': return Tensor(self.data != other.data)
+    def __gt__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a > b, ">").out
+    def __lt__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a < b, "<").out
+    def __ge__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a >= b, ">=").out
+    def __le__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a <= b, "<=").out
+    def __eq__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a == b, "==").out
+    def __ne__(self, other: 'Tensor') -> 'Tensor': return op.cmp(self, other, lambda a,b: a != b, "!=").out
 
     # === base operations ===
     def __add__(self, other: TensorOpArgs) -> 'Tensor': return op.add(self, other).out
@@ -376,7 +376,12 @@ class Tensor:
     def T(self) -> 'Tensor': return op.T(self).out
 
     @property
+    def int(self) -> 'Tensor': return Tensor(np.array(self.data, dtype=int))
+
+    @property
     def grad(self) -> np.ndarray:
         if self._grad is None: 
             warnings.warn(f"Access of empty gradient: tensor(shape={self.shape}, requires_grad={self.requires_grad}, label={self.label})")
         return self._grad
+
+    # Miscellaneous
