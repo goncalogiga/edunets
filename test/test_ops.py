@@ -131,10 +131,18 @@ class TestOps(unittest.TestCase):
         assert_passes(lambda a: a[a[0] > 0.0], self.a)
 
     def test_getitem5(self):
+        assert_passes(lambda a: a[a > 0.0], self.a)
+
+    def test_getitem6(self):
         assert_passes(lambda a: a[:, 0], self.a)
     
-    def test_getitem6(self):
+    def test_getitem7(self):
         assert_passes(lambda a: a[np.array(1)], self.a)
+
+    def test_getitem8(self):
+        y = np.array([1.0, 0.0])
+        x = np.random.uniform(size=(4, 2))
+        assert_passes(lambda x: x[np.arange(2), y], x)
 
     def test_log1(self):
         assert_passes(lambda a: a.log(), self.a)
