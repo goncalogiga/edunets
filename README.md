@@ -249,6 +249,10 @@ This makes methods like ```zero_grad()``` inevitable when updating gradients usi
 
 ## Tests
 
+To run the unit tests for edunets you can use the following command: 
+
 ```python
 python3 -m unittest discover test
 ```
+
+This requires Pytorch to be installed since the testing compares edunet's forward and backward results with pytorch ones.
