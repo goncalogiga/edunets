@@ -213,7 +213,7 @@ class Tensor:
     def zero_grad(self) -> None: self._grad = None
     def retain_grad(self) -> None: self.requires_grad = True
     
-    def backward(self, debug: bool=False) -> None:
+    def backward(self, gradient: np.ndarray=None, debug: bool=False) -> None:
         """
         Backpropagation algorithm
 
@@ -237,8 +237,10 @@ class Tensor:
         RuntimeError
             If the tensor contains a matrix instead of a scalar
         """
-        if self.shape != (1,):
-            raise RuntimeError("Edunets' back propagation only supports scalar outputs.")
+        if self.shape != (1,) and gradient is None:
+            raise RuntimeError("Initial grad can only be implicitly created for scalar outputs.")
+        if gradient is not None and not (isinstance(gradient, np.ndarray) or isinstance(gradient, Tensor)):
+            raise TypeError(f"Expected initial grad to be of type 'np.ndarray' or 'Tensor', got '{type(gradient)}' instead.")
 
         # === topological sort of the operations' graph ===
         sorted_grah, visited = [], set()
@@ -259,7 +261,9 @@ class Tensor:
         # chain rule result.
         # Backpropagation is done assuming the node calling .backward()
         # is the last of the operation grah
-        self._grad, prev_v = np.array(1.0), None
+        self._grad = np.array(1.0) if gradient is None else gradient
+        self._grad = self._grad.data if isinstance(self._grad, Tensor) else self._grad
+        prev_v = None
 
         # For each node, apply the chain rule to get its gradient
         for v in reversed(sorted_grah):
@@ -298,7 +302,8 @@ class Tensor:
 
     def max(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.max(self, axis=axis, keepdims=keepdims).out
     def min(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.min(self, axis=axis, keepdims=keepdims).out
-    def sum(self, axis: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor': return op.sum(self, axis=axis, keepdims=keepdims).out
+    def sum(self, axis: typing.Tuple[int, ...]=None, dim: typing.Tuple[int, ...]=None, keepdims: bool=False) -> 'Tensor':
+        return op.sum(self, axis=dim if dim is not None else axis, keepdims=keepdims).out
 
     def relu(self) -> 'Tensor': return op.relu(self).out
 

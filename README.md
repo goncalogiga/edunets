@@ -249,4 +249,6 @@ This makes methods like ```zero_grad()``` inevitable when updating gradients usi
 
 ## Tests
 
-TODO
+```python
+python3 -m unittest discover test
+```

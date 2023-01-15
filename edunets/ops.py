@@ -159,7 +159,7 @@ class pow(BinaryOp):
 
     def backward(self) -> None:
         self.a._update_grad(self.b.data * (self.a.data ** (self.b.data - 1)) * self.out.grad)
-        self.b._update_grad(np.zeros(self.b.shape))
+        self.b._update_grad(self.out.data * np.log(self.a.data) * self.out.grad)
 
 
 class matmul(BinaryOp):
