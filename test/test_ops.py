@@ -72,7 +72,6 @@ class TestOps(unittest.TestCase):
         assert_passes(lambda a: self.c - a, self.a)
 
     def test_minus2(self):
-        a = np.random.uniform(10,10)
         assert_passes(lambda a,b: a - b, self.a, self.b)
 
     def test_mul1(self):
@@ -144,6 +143,16 @@ class TestOps(unittest.TestCase):
         x = np.random.uniform(size=(4, 2))
         assert_passes(lambda x: x[np.arange(2), y], x)
 
+    def test_getitem9(self):
+        a = np.random.uniform(size=(4,4))
+        b = np.random.uniform(size=(4,1))
+        assert_passes(lambda a,b: (a @ b)[0:4], a, b)
+
+    def test_getitem10(self):
+        a = np.random.uniform(size=(4,4))
+        b = np.random.uniform(size=(4,1))
+        assert_passes(lambda a,b: b * (a @ b)[0:4], a, b)
+
     def test_log1(self):
         assert_passes(lambda a: a.log(), self.a)
 
@@ -186,8 +195,10 @@ class TestOps(unittest.TestCase):
         a = np.random.uniform(size=(4,4))
         b = np.random.uniform(size=(4,1))
 
+        # This is broken because brodcasting is not really
+        # supported in edunets
         def op(a,b):
-            return a * ((a @ b).T[0:4])/((a @ b).T[-1])
+            return a * ((a @ b)[0:4])/((a @ b).T[-1])
 
         assert_passes(op, a, b)
         

@@ -159,7 +159,11 @@ class pow(BinaryOp):
 
     def backward(self) -> None:
         self.a._update_grad(self.b.data * (self.a.data ** (self.b.data - 1)) * self.out.grad)
-        self.b._update_grad(self.out.data * np.log(self.a.data) * self.out.grad)
+
+        if len(self.a.shape) == len(self.b.shape):
+            self.b._update_grad(self.out.data * np.log(self.a.data) * self.out.grad)
+        else:
+            self.b._update_grad((self.out.data * np.log(self.a.data) * self.out.grad).sum(axis=0))
 
 
 class matmul(BinaryOp):
@@ -217,8 +221,7 @@ class cmp(Function):
         return self.cmp_fn(self.a.data, self.b.data)
 
     # No backward for comparisons
-    def backward(self) -> None:
-        pass
+    def backward(self) -> None: pass
 
 
 # == Reduction Ops ===
