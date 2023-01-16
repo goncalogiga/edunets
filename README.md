@@ -247,6 +247,12 @@ Here we have two examples of very simple calculations. In the first one, a is ad
 
 This makes methods like ```zero_grad()``` inevitable when updating gradients using a trainig loop. If gradients are not cleared up, they accumulate the values of the previous training itteration and it will impossible for the model to learn correctly.
 
+## More stuff you can do in edunets
+
+### Convolutions
+
+TODO
+
 ## Tests
 
 To run the unit tests for edunets you can use the following command: 
