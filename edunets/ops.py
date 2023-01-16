@@ -88,6 +88,38 @@ class T(UnaryOp):
         self.a._update_grad(self.out.grad.T)
 
 
+class fftn(UnaryOp):
+    """
+    + Fast Fourier Transform
+    """
+    op: str = "fft"
+    dtype: type = np.dtype('complex128')
+
+    def forward(self) -> np.ndarray:
+        return np.fft.fftn(self.a.data)
+
+    def backward(self) -> None:
+        grad = np.zeros(self.a.shape)
+        grad[tuple(0 for _ in range(len(self.a.shape)))] = np.prod(self.a.shape)
+        self.a._update_grad(grad * self.out.grad)
+
+
+class ifftn(UnaryOp):
+    """
+    + Inverse Fast Fourier Transform
+    """
+    op: str = "ifft"
+    dtype: type = np.dtype('complex128')
+
+    def forward(self) -> np.ndarray:
+        return np.fft.ifftn(self.a.data)
+
+    def backward(self) -> None:
+        grad = np.zeros(self.a.shape)
+        grad[tuple(0 for _ in range(len(self.a.shape)))] = 1.0
+        self.a._update_grad(grad * self.out.grad)
+
+
 # === Binary ops ===
 
 

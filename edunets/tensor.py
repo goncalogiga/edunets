@@ -306,6 +306,9 @@ class Tensor:
         return op.sum(self, axis=dim if dim is not None else axis, keepdims=keepdims).out
 
     def relu(self) -> 'Tensor': return op.relu(self).out
+    
+    def fftn(self) -> 'Tensor': return op.fftn(self).out
+    def ifftn(self) -> 'Tensor': return op.ifftn(self).out
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 
