@@ -55,7 +55,12 @@ class Function:
 
         if brodcastable: self._brodcast(*args)
 
-        self.out = Tensor(self.forward(), dtype=self.dtype)\
+        if self.dtype != Tensor._default_dtype: # if some specific dtype was set
+            dtype = self.dtype
+        else:
+            dtype = args[0].dtype
+
+        self.out = Tensor(self.forward(), dtype=dtype)\
             ._parent_of(tuple(args))\
             ._result_of_op(self.op)\
             ._set_backward(self.backward)

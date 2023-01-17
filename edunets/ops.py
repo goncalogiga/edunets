@@ -120,6 +120,25 @@ class ifftn(UnaryOp):
         self.a._update_grad(grad * self.out.grad)
 
 
+class pad(Function):
+    """
+    + Padding
+    """
+    op: str = "pad"
+
+    def __init__(self, a, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def forward(self) -> np.ndarray:
+        return np.pad(self.a.data, *self.args, **self.kwargs)
+
+    def backward(self) -> None: # not sure at all
+        self.a._update_grad(np.pad(self.out.grad, *self.args, **self.kwargs))
+
+
 # === Binary ops ===
 
 

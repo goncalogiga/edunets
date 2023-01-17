@@ -75,9 +75,10 @@ class Tensor:
     _children: tuple = ()
     _is_static: bool = False
     _grad: np.ndarray = None
+    _default_dtype: type = np.float32
 
 
-    def __init__(self, data: TensorContent, dtype: type=np.float32, requires_grad: bool=False, label: str=None):
+    def __init__(self, data: TensorContent, dtype: type=None, requires_grad: bool=False, label: str=None):
         """
         Parameters
         ----------
@@ -95,7 +96,7 @@ class Tensor:
         self.label: str = label
         self._key: int = random.randint(0, 2**32)
         self.requires_grad: bool = bool(requires_grad)
-        self.data: np.ndarray = np.array(data, dtype=dtype)
+        self.data: np.ndarray = np.array(data, dtype=dtype if dtype else self._default_dtype)
         self._backward: typing.Callable[[], None] = lambda: None
 
         if self.data.shape == (): self.data = np.expand_dims(self.data, axis=0)
@@ -309,6 +310,8 @@ class Tensor:
     
     def fftn(self) -> 'Tensor': return op.fftn(self).out
     def ifftn(self) -> 'Tensor': return op.ifftn(self).out
+
+    def pad(self, *args, **kwargs): return op.pad(self, *args, **kwargs).out
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 
