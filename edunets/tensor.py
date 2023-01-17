@@ -339,6 +339,11 @@ class Tensor:
     def mean(self) -> 'Tensor': return self.sum()/sum(x for x in self.shape)
     def logsoftmax(self, axis: typing.Tuple[int, ...]) -> 'Tensor': return self.softmax(axis).log()
 
+    def convolve(self, other: TensorContent) -> 'Tensor':
+        weight = other if isinstance(other, Tensor) else Tensor(other)._set_as_static()
+        weight = weight.pad([(0, ad - bd) for ad, bd in zip(self.shape, weight.shape)], mode='constant')
+        return (self.fftn() * weight.fftn()).ifftn().real
+
     #   ~~~ activation functions ~~~
     def sigmoid(self) -> 'Tensor': return 1.0/(1.0 + (-self).exp())
     def tanh(self) -> 'Tensor': return 2.0 * ((2.0 * self).sigmoid()) - 1.0
@@ -391,3 +396,10 @@ class Tensor:
         return self._grad
 
     # Miscellaneous
+
+    @property
+    def real(self) -> 'Tensor':
+        rtensor = Tensor(self.data.real, requires_grad=self.requires_grad, label=self.label)
+        rtensor._children = self._children
+        rtensor._grad = self._grad
+        return rtensor

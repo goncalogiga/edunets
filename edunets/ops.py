@@ -2,7 +2,7 @@ import typing
 import numpy as np
 import numpy.ma as ma
 from edunets.function import Function
-from edunets.expanders import expand_by_repeating
+from edunets.utils import expand_by_repeating
 
 # === Unary ops ===
 
@@ -260,6 +260,20 @@ class matmul(BinaryOp):
         self.b._update_grad(self._backward_b())
 
 
+class convolve(Function):
+    op: str = "conv"
+
+    def __init__(self, a, b, stride):
+        self.stride = stride
+
+        self.a, self.b = self.__prepare__(a, b)
+        super().__init__(self.a, self.b)
+
+    def forward(self) -> np.ndarray:
+        return super().forward()
+
+
+
 class cmp(Function):
     def __init__(self, a, b, cmp_fn, cmp_op):
         self.op = cmp_op
@@ -273,6 +287,7 @@ class cmp(Function):
 
     # No backward for comparisons
     def backward(self) -> None: pass
+
 
 
 # == Reduction Ops ===
