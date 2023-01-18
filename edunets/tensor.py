@@ -75,7 +75,7 @@ class Tensor:
     _children: tuple = ()
     _is_static: bool = False
     _grad: np.ndarray = None
-    _default_dtype: type = np.float32
+    _default_dtype: type = np.float64
 
 
     def __init__(self, data: TensorContent, dtype: type=None, requires_grad: bool=False, label: str=None):
@@ -308,8 +308,8 @@ class Tensor:
 
     def relu(self) -> 'Tensor': return op.relu(self).out
 
-    def correlate(self, other, mode="full", method="auto") -> 'Tensor': return op.correlate(self, other, mode, method).out
-    def convolve(self, other, mode="full", method="auto") -> 'Tensor': return op.convolve(self, other, mode, method).out
+    def reshape(self, shape) -> 'Tensor': return op.reshape(self, shape=shape).out
+    def correlate(self, other, method="auto") -> 'Tensor': return op.correlate(self, other, method).out
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 

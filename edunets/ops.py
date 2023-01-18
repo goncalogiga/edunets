@@ -89,6 +89,24 @@ class T(UnaryOp):
         self.a._update_grad(self.out.grad.T)
 
 
+class reshape(Function):
+    """
+    + Flatten tensor
+    """
+    op: str = "reshape"
+
+    def __init__(self, a, shape):
+        self.shape = shape
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def forward(self) -> np.ndarray:
+        return self.a.data.reshape(self.shape)
+
+    def backward(self) -> None:
+        self.a._update_grad(self.out.grad.reshape(self.a.shape))
+
+
 # === Binary ops ===
 
 
@@ -211,39 +229,23 @@ class matmul(BinaryOp):
 
 
 class correlate(Function):
+    """
+    + Cross-correlation
+    """
     op: str = "corr"
 
-    def __init__(self, a, b, mode, method):
-        self.mode = mode
+    def __init__(self, a, b, method):
         self.method = method
         self.a, self.b = self.__prepare__(a, b)
         super().__init__(self.a, self.b)
 
     def forward(self) -> np.ndarray:
-        return signal.correlate(self.a.data, self.b.data, self.mode, self.method)
+        return signal.correlate(self.a.data, self.b.data, "valid", self.method)
 
     def backward(self) -> None:
-        # self.a._update_grad()
-        # self.b._update_grad()
-        ...
-
-
-class convolve(Function):
-    op: str = "corr"
-
-    def __init__(self, a, b, mode, method):
-        self.mode = mode
-        self.method = method
-        self.a, self.b = self.__prepare__(a, b)
-        super().__init__(self.a, self.b)
-
-    def forward(self) -> np.ndarray:
-        return signal.convolve(self.a.data, self.b.data, self.mode, self.method)
-
-    def backward(self) -> None:
-        # self.a._update_grad()
-        # self.b._update_grad()
-        ...
+        # Got this thanks to: https://pavisj.medium.com/convolutions-and-backpropagations-46026a8f5d2c
+        self.a._update_grad(signal.correlate(self.b.data, self.out.grad, "full", self.method))
+        self.b._update_grad(signal.correlate(self.a.data, self.out.grad, "valid", self.method))
 
 
 class cmp(Function):
