@@ -307,11 +307,9 @@ class Tensor:
         return op.sum(self, axis=dim if dim is not None else axis, keepdims=keepdims).out
 
     def relu(self) -> 'Tensor': return op.relu(self).out
-    
-    def fftn(self) -> 'Tensor': return op.fftn(self).out
-    def ifftn(self) -> 'Tensor': return op.ifftn(self).out
 
-    def pad(self, *args, **kwargs): return op.pad(self, *args, **kwargs).out
+    def correlate(self, other, mode="full", method="auto") -> 'Tensor': return op.correlate(self, other, mode, method).out
+    def convolve(self, other, mode="full", method="auto") -> 'Tensor': return op.convolve(self, other, mode, method).out
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 
@@ -338,11 +336,6 @@ class Tensor:
 
     def mean(self) -> 'Tensor': return self.sum()/sum(x for x in self.shape)
     def logsoftmax(self, axis: typing.Tuple[int, ...]) -> 'Tensor': return self.softmax(axis).log()
-
-    def convolve(self, other: TensorContent) -> 'Tensor':
-        weight = other if isinstance(other, Tensor) else Tensor(other)._set_as_static()
-        weight = weight.pad([(0, ad - bd) for ad, bd in zip(self.shape, weight.shape)], mode='constant')
-        return (self.fftn() * weight.fftn()).ifftn().real
 
     #   ~~~ activation functions ~~~
     def sigmoid(self) -> 'Tensor': return 1.0/(1.0 + (-self).exp())
@@ -394,12 +387,3 @@ class Tensor:
         if self._grad is None: 
             warnings.warn(f"Access of empty gradient: tensor(shape={self.shape}, requires_grad={self.requires_grad}, label={self.label})")
         return self._grad
-
-    # Miscellaneous
-
-    @property
-    def real(self) -> 'Tensor':
-        rtensor = Tensor(self.data.real, requires_grad=self.requires_grad, label=self.label)
-        rtensor._children = self._children
-        rtensor._grad = self._grad
-        return rtensor

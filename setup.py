@@ -8,6 +8,6 @@ setuptools.setup(
     description='A very basic deep learning framework built to better understand how neural nets work',
     license='MIT',
     packages=['edunets'],
-    install_requires=setuptools.find_packages(),
+    install_requires=['numpy', 'scipy'],
     python_requires='>=3.6',
 )

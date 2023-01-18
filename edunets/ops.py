@@ -1,6 +1,7 @@
 import typing
 import numpy as np
 import numpy.ma as ma
+from scipy import signal
 from edunets.function import Function
 from edunets.utils import expand_by_repeating
 
@@ -86,57 +87,6 @@ class T(UnaryOp):
 
     def backward(self) -> None:
         self.a._update_grad(self.out.grad.T)
-
-
-class fftn(UnaryOp):
-    """
-    + Fast Fourier Transform
-    """
-    op: str = "fft"
-    dtype: type = np.dtype('complex128')
-
-    def forward(self) -> np.ndarray:
-        return np.fft.fftn(self.a.data)
-
-    def backward(self) -> None:
-        grad = np.zeros(self.a.shape)
-        grad[tuple(0 for _ in range(len(self.a.shape)))] = np.prod(self.a.shape)
-        self.a._update_grad(grad * self.out.grad)
-
-
-class ifftn(UnaryOp):
-    """
-    + Inverse Fast Fourier Transform
-    """
-    op: str = "ifft"
-    dtype: type = np.dtype('complex128')
-
-    def forward(self) -> np.ndarray:
-        return np.fft.ifftn(self.a.data)
-
-    def backward(self) -> None:
-        grad = np.zeros(self.a.shape)
-        grad[tuple(0 for _ in range(len(self.a.shape)))] = 1.0
-        self.a._update_grad(grad * self.out.grad)
-
-
-class pad(Function):
-    """
-    + Padding
-    """
-    op: str = "pad"
-
-    def __init__(self, a, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
-        self.a = self.__prepare__(a)
-        super().__init__(self.a)
-
-    def forward(self) -> np.ndarray:
-        return np.pad(self.a.data, *self.args, **self.kwargs)
-
-    def backward(self) -> None: # not sure at all
-        self.a._update_grad(np.pad(self.out.grad, *self.args, **self.kwargs))
 
 
 # === Binary ops ===
@@ -260,18 +210,40 @@ class matmul(BinaryOp):
         self.b._update_grad(self._backward_b())
 
 
-class convolve(Function):
-    op: str = "conv"
+class correlate(Function):
+    op: str = "corr"
 
-    def __init__(self, a, b, stride):
-        self.stride = stride
-
+    def __init__(self, a, b, mode, method):
+        self.mode = mode
+        self.method = method
         self.a, self.b = self.__prepare__(a, b)
         super().__init__(self.a, self.b)
 
     def forward(self) -> np.ndarray:
-        return super().forward()
+        return signal.correlate(self.a.data, self.b.data, self.mode, self.method)
 
+    def backward(self) -> None:
+        # self.a._update_grad()
+        # self.b._update_grad()
+        ...
+
+
+class convolve(Function):
+    op: str = "corr"
+
+    def __init__(self, a, b, mode, method):
+        self.mode = mode
+        self.method = method
+        self.a, self.b = self.__prepare__(a, b)
+        super().__init__(self.a, self.b)
+
+    def forward(self) -> np.ndarray:
+        return signal.convolve(self.a.data, self.b.data, self.mode, self.method)
+
+    def backward(self) -> None:
+        # self.a._update_grad()
+        # self.b._update_grad()
+        ...
 
 
 class cmp(Function):
