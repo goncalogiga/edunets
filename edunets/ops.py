@@ -91,7 +91,7 @@ class T(UnaryOp):
 
 class reshape(Function):
     """
-    + Flatten tensor
+    + Reshape tensor
     """
     op: str = "reshape"
 
