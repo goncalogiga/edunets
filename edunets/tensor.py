@@ -329,6 +329,9 @@ class Tensor:
     def sin(self) -> 'Tensor': return (np.pi/2 - self).cos()
     def tan(self) -> 'Tensor': return self.sin()/self.cos()
 
+    def flatten(self) -> 'Tensor': return self.reshape((-1,))
+    def squeeze(self) -> 'Tensor': return self.reshape(tuple(x for x in self.shape if x > 1))
+
     # === more advanced operations ===
     def softmax(self, axis: typing.Tuple[int, ...]) -> 'Tensor':
         e = (self - Tensor(np.max(self.data, axis=axis, keepdims=True))).exp()
