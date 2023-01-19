@@ -230,9 +230,12 @@ class matmul(BinaryOp):
 
 class correlate(Function):
     """
-    + Cross-correlation
+    + Cross-correlation with padding equal to 0 and stride equal to 1.
+        This cross-correlation operation is fast thanks to scipy implementation
+        of cross-correlation with fft (when fft is assumed to be fasted then regular computation). 
+        (https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.correlate.html)
     """
-    op: str = "corr"
+    op: str = "cross-corr"
 
     def __init__(self, a, b, method):
         self.method = method
@@ -244,7 +247,7 @@ class correlate(Function):
 
     def backward(self) -> None:
         # Got this thanks to: https://pavisj.medium.com/convolutions-and-backpropagations-46026a8f5d2c
-        self.a._update_grad(signal.correlate(self.b.data, self.out.grad, "full", self.method))
+        self.a._update_grad(signal.correlate(self.out.grad, self.b.data, "full", self.method))
         self.b._update_grad(signal.correlate(self.a.data, self.out.grad, "valid", self.method))
 
 
