@@ -34,4 +34,4 @@ def indexes_by_stride(t, stride=1):
         for idx in [i for i in range(t_.shape[0]) if i % stride == 0]:
             select_with_stride(t_[idx], selected + [idx])
 
-    select_with_stride(t); return [selected_with_stride[axis] for axis in range(len(t.shape))]
+    select_with_stride(t); return tuple(selected_with_stride[axis] for axis in range(len(t.shape)))
