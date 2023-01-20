@@ -3,7 +3,7 @@ import numpy as np
 import numpy.ma as ma
 from scipy import signal
 from edunets.function import Function
-from edunets.utils import expand_by_repeating
+from edunets.utils import expand_by_repeating, unpad
 
 # === Unary ops ===
 
@@ -104,8 +104,6 @@ class reshape(Function):
         return self.a.data.reshape(self.shape)
 
     def backward(self) -> None:
-        print(self.out.grad)
-        print("***", self.out.grad.shape, "***")
         self.a._update_grad(self.out.grad.reshape(self.a.shape))
 
 
@@ -129,18 +127,11 @@ class pad(Function):
         self.a = self.__prepare__(a)
         super().__init__(self.a)
 
-    def _unpad(self, x):
-        slices = []
-        for c in self.pad:
-            e = None if c[1] == 0 else -c[1]
-            slices.append(slice(c[0], e))
-        return x[tuple(slices)]
-
     def forward(self) -> np.ndarray:
         return np.pad(self.a.data, self.pad, self.mode, **self.kwargs)
     
     def backward(self) -> None:
-        self.a._update_grad(self._unpad(self.out.grad))
+        self.a._update_grad(unpad(self.out.grad, self.pad))
 
 
 # === Binary ops ===
