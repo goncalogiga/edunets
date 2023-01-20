@@ -50,7 +50,7 @@ def conv(input: Tensor, kernel: Tensor, stride: int=1, padding_mode: str="consta
             input = chosen_padding(input, padding)
         elif isinstance(padding, str):
             if padding == "same":
-                ...
+                ... # TODO
             else:
                 raise ValueError(f"Unknown padding mode '{padding}'. Available padding modes: 'valid', 'same'.")
         else:
