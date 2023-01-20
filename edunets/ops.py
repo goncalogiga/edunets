@@ -107,6 +107,40 @@ class reshape(Function):
         self.a._update_grad(self.out.grad.reshape(self.a.shape))
 
 
+class pad(Function):
+    """
+    + Padding
+    """
+    op: str = "pad"
+
+    def __init__(self, a, pad, mode, **kwargs):
+        assert len(pad) % 2 == 0, "Padding length must be divisible by 2."
+        assert len(pad) // 2 <= len(a.shape), "Padding length too large."
+
+        # padding must be changed given the difference between numpy convention
+        # and pytorch's.
+        n = len(a.shape)
+        self.pad = tuple(pad[i:i+n] for i in range(0, len(pad), n))[::-1]
+        self.mode = mode
+        self.kwargs = kwargs
+
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def _unpad(self, x):
+        slices = []
+        for c in self.pad:
+            e = None if c[1] == 0 else -c[1]
+            slices.append(slice(c[0], e))
+        return x[tuple(slices)]
+
+    def forward(self) -> np.ndarray:
+        return np.pad(self.a.data, self.pad, self.mode, **self.kwargs)
+    
+    def backward(self) -> None:
+        self.a._update_grad(self._unpad(self.out.grad))
+
+
 # === Binary ops ===
 
 

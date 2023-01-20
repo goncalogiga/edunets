@@ -310,6 +310,7 @@ class Tensor:
 
     def reshape(self, shape) -> 'Tensor': return op.reshape(self, shape=shape).out
     def correlate(self, other, method="auto") -> 'Tensor': return op.correlate(self, other, method).out
+    def pad(self, pad, mode="constant", **kwargs) -> 'Tensor': return op.pad(self, pad, mode, **kwargs).out 
 
     # == selection and slicing ===
     def __getitem__(self, items: typing.Union[int, slice, typing.List[int], np.ndarray, 'Tensor']) -> 'Tensor': 
