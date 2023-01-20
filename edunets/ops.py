@@ -104,6 +104,8 @@ class reshape(Function):
         return self.a.data.reshape(self.shape)
 
     def backward(self) -> None:
+        print(self.out.grad)
+        print("***", self.out.grad.shape, "***")
         self.a._update_grad(self.out.grad.reshape(self.a.shape))
 
 

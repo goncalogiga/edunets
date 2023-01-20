@@ -381,6 +381,9 @@ class Tensor:
     def shape(self) -> typing.Tuple[int, ...]: return self.data.shape
 
     @property
+    def dim(self) -> int: return len(self.data.shape)
+
+    @property
     def T(self) -> 'Tensor': return op.T(self).out
 
     @property
