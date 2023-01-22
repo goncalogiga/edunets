@@ -270,6 +270,8 @@ class correlate(Function):
         super().__init__(self.a, self.b)
 
     def forward(self) -> np.ndarray:
+        if self.a.dim != self.b.dim:
+            raise ValueError(f"a (shape: {self.a.shape}) and b (shape: {self.b.shape}) should have the same dimensionality.")
         return signal.correlate(self.a.data, self.b.data, "valid", self.method)
 
     def backward(self) -> None:
