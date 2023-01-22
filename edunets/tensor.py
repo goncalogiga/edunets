@@ -308,6 +308,7 @@ class Tensor:
 
     def relu(self) -> 'Tensor': return op.relu(self).out
 
+    def expand(self, sizes) -> 'Tensor': return op.expand(self, sizes).out
     def reshape(self, shape) -> 'Tensor': return op.reshape(self, shape=shape).out
     def correlate(self, other, method="auto") -> 'Tensor': return op.correlate(self, other, method).out
     def pad(self, pad, mode="constant", **kwargs) -> 'Tensor': return op.pad(self, pad, mode, **kwargs).out 

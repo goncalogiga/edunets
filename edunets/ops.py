@@ -89,6 +89,49 @@ class T(UnaryOp):
         self.a._update_grad(self.out.grad.T)
 
 
+class expand(Function):
+    """
+    + Expand a tensor
+    """
+    op: str = "expand"
+
+    def __init__(self, a, sizes):
+        self.sizes = sizes
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def forward(self) -> np.ndarray:
+        return np.broadcast_to(self.a.data, self.sizes)
+
+    def backward(self) -> None:
+        def _backward(x) -> np.ndarray:
+            for _ in range(len(self.sizes) - len(self.a.shape)):
+                x = x.sum(axis=-1)
+            return x
+        self.a._update_grad(_backward(self.out.grad))
+
+
+class repeat(Function):
+    """
+    + Repeat inside tensor
+    """
+    op: str = "repeat"
+
+    def __init__(self, a, sizes):
+        self.sizes = sizes
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def forward(self) -> np.ndarray:
+        x = self.a.data
+        for i, rep in self.sizes:
+            x = x.repeat(rep, axis=i)
+        return x
+
+    def backward(self) -> None:
+        self.a._update_grad()        
+
+
 class reshape(Function):
     """
     + Reshape tensor
