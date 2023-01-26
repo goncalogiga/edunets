@@ -117,7 +117,7 @@ class Function:
             try:
                 brodcast_shape = np.broadcast(a.data, b.data).shape
             except ValueError:
-                raise ValueError(f"Shape of tensors mismatch: {a.shape} x {b.shape}.")
+                raise ValueError(f"Shape of tensors mismatch: {a.shape} x {b.shape}. (in operation '{self.op}')")
         
             a_shape, b_shape = a.shape, b.shape
             

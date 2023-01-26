@@ -96,6 +96,7 @@ class expand(Function):
     op: str = "expand"
 
     def __init__(self, a, sizes):
+        assert isinstance(sizes, tuple), f"Expected tuple for sizes, got {type(sizes)} instead."
         self.sizes = sizes
         self.a = self.__prepare__(a)
         super().__init__(self.a)
@@ -105,31 +106,16 @@ class expand(Function):
 
     def backward(self) -> None:
         def _backward(x) -> np.ndarray:
+            # Collapse extra dimensions
             for _ in range(len(self.sizes) - len(self.a.shape)):
                 x = x.sum(axis=-1)
-            return x
+            # Sum on remaining dimensions
+            for axis, (new_axis_dim, axis_dim) in enumerate(zip(self.a.shape, x.shape)):
+                if new_axis_dim != axis_dim:
+                    x = x.sum(axis=axis)
+            return x.reshape(self.a.shape)
+
         self.a._update_grad(_backward(self.out.grad))
-
-
-class repeat(Function):
-    """
-    + Repeat inside tensor
-    """
-    op: str = "repeat"
-
-    def __init__(self, a, sizes):
-        self.sizes = sizes
-        self.a = self.__prepare__(a)
-        super().__init__(self.a)
-
-    def forward(self) -> np.ndarray:
-        x = self.a.data
-        for i, rep in self.sizes:
-            x = x.repeat(rep, axis=i)
-        return x
-
-    def backward(self) -> None:
-        self.a._update_grad()        
 
 
 class reshape(Function):
@@ -148,6 +134,21 @@ class reshape(Function):
 
     def backward(self) -> None:
         self.a._update_grad(self.out.grad.reshape(self.a.shape))
+
+
+class tile(Function):
+    op: str = "tile"
+
+    def __init__(self, a, reps):
+        self.reps = reps
+        self.a = self.__prepare__(a)
+        super().__init__(self.a)
+
+    def forward(self) -> np.ndarray:
+        return np.tile(self.a.data, self.reps)
+
+    def backward(self) -> None:
+        self.a._update_grad((np.prod(self.reps) * self.out.grad)[tuple(slice(i) for i in self.a.shape)])
 
 
 class pad(Function):

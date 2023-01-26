@@ -308,6 +308,7 @@ class Tensor:
 
     def relu(self) -> 'Tensor': return op.relu(self).out
 
+    def tile(self, reps) -> 'Tensor': return op.tile(self, reps).out
     def expand(self, sizes) -> 'Tensor': return op.expand(self, sizes).out
     def reshape(self, shape) -> 'Tensor': return op.reshape(self, shape=shape).out
     def correlate(self, other, method="auto") -> 'Tensor': return op.correlate(self, other, method).out
@@ -333,6 +334,14 @@ class Tensor:
 
     def flatten(self) -> 'Tensor': return self.reshape((-1,))
     def squeeze(self) -> 'Tensor': return self.reshape(tuple(x for x in self.shape if x > 1))
+
+    def repeat(self, sizes) -> 'Tensor':
+        # If there are some actual repetitions inside the axis of t
+        if not all(sizes[-i] == 1 for i in range(1, len(self.shape)+1)):
+            self = self.tile(sizes[len(sizes) - len(self.shape):])
+        reshape_arg = tuple([1]*(len(sizes) - len(self.shape)) + list(self.shape))
+        expand_arg = tuple(exp if s == 1 else s for s, exp in zip(reshape_arg, sizes))
+        return self.reshape(reshape_arg).expand(expand_arg)
 
     # === more advanced operations ===
     def softmax(self, axis: typing.Tuple[int, ...]) -> 'Tensor':

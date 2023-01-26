@@ -33,11 +33,11 @@ def conv(input: Tensor, kernel: Tensor, stride: int=1, padding_mode: str="consta
     + dilation: int|tuple (default: 1)
         Spacing between kernel elements. 
     """
-    chosen_padding = lambda x, pad_width: x.pad(pad_width, mode=padding_mode)
-
     # === padding ===
      # padding='valid' is the same as no padding
     if padding != 0 and padding != "valid":
+        chosen_padding = lambda x, pad_width: x.pad(pad_width, mode=padding_mode)
+
         # ~~ Squeezing input before padding ~~
         # We remove the non-empty dimensions and replace them with -1,
         # this is so we can update the shapes after the padding
@@ -50,7 +50,13 @@ def conv(input: Tensor, kernel: Tensor, stride: int=1, padding_mode: str="consta
             input = chosen_padding(input, padding)
         elif isinstance(padding, str):
             if padding == "same":
-                ... # TODO
+                # Padding 'same' means we want the result of the convolution to
+                # be the same size of the input. The shape of the result is given by:
+                # Y = I + K - 1, where I is the shape of the input and K of the kernel
+                # We pad I so Y = (I + P) + K - 1, where P is the padding
+                # Since we cant Y = I we get P = K - 1
+                # We add an extra -1 because of the pad function implementation.
+                input = chosen_padding(input, tuple(np.array(kernel.squeeze().shape) - 2))
             else:
                 raise ValueError(f"Unknown padding mode '{padding}'. Available padding modes: 'valid', 'same'.")
         else:
