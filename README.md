@@ -7,7 +7,7 @@ The notebooks under ```notebooks/``` demonstrate some of the things edunets can 
 ## Installation
 
 ```bash
-pip3 install https://github.com/goncalogiga/edunets
+pip3 install git+https://github.com/goncalogiga/edunets
 ```
 
 ## Introduction
